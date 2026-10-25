@@ -340,6 +340,7 @@ const ar: Widen<Messages> = {
       "«اسمعني» (Listen to me) يحوّل النص المكتوب إلى كلام طبيعي في {languages} لغة، مع ترجمة مدمجة واستيراد ملفات TXT وPDF.",
     creator: "من إنشاء",
     instagram: "إنستغرام",
+    source: "الشيفرة المصدرية على GitHub",
     privacyTitle: "الخصوصية",
     privacy1: "لإنشاء الصوت يُرسل نصك إلى خدمة تحويل النص إلى كلام من Microsoft Edge، وتُرسل الترجمة النص إلى Google Translate.",
     privacy2: "تُقرأ ملفات TXT وPDF داخل متصفحك ولا تُرفع أبداً. ويجري التعرّف الضوئي على نصوص الصفحات الممسوحة (OCR) داخل متصفحك أيضاً.",
@@ -359,6 +360,7 @@ const ar: Widen<Messages> = {
     rights: "© {year} يوسف الشمري (Yousif AL_Shamri). جميع الحقوق محفوظة.",
     privacy: "الخصوصية",
     about: "حول الموقع",
+    source: "الشيفرة المصدرية",
     credits: "الأصوات من Microsoft Edge · الترجمة من Google Translate",
   },
   themes: {

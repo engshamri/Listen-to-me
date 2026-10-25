@@ -1,8 +1,8 @@
 "use client";
 
-import { Instagram } from "lucide-react";
+import { CodeXml, Instagram } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "./app-footer";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL, REPOSITORY_URL } from "./app-footer";
 import { LogoMark } from "./logo";
 import { Kbd } from "@/components/studio/primitives";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -43,16 +43,27 @@ export function AboutDialog({ open, section, onOpenChange }: { open: boolean; se
             <p className="text-muted-foreground text-[13px]">{t("about.creator")}</p>
             <p className="font-medium" dir="ltr">Yousif AL_Shamri</p>
           </div>
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
-          >
-            <Instagram className="size-4" aria-hidden />
-            <span>{t("about.instagram")}</span>
-            <span dir="ltr">@{INSTAGRAM_HANDLE}</span>
-          </a>
+          <div className="flex flex-col items-start gap-1.5">
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+            >
+              <Instagram className="size-4" aria-hidden />
+              <span>{t("about.instagram")}</span>
+              <span dir="ltr">@{INSTAGRAM_HANDLE}</span>
+            </a>
+            <a
+              href={REPOSITORY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+            >
+              <CodeXml className="size-4" aria-hidden />
+              <span>{t("about.source")}</span>
+            </a>
+          </div>
         </div>
 
         <section aria-labelledby="about-privacy" className="space-y-2">

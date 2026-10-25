@@ -1,11 +1,12 @@
 "use client";
 
-import { Instagram } from "lucide-react";
+import { CodeXml, Instagram } from "lucide-react";
 import type { AboutSection } from "./about-dialog";
 import { useI18n } from "@/lib/i18n/provider";
 
 export const INSTAGRAM_HANDLE = "mmmmn";
 export const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
+export const REPOSITORY_URL = "https://github.com/engshamri/asmani";
 
 export function AppFooter({ year, onAbout }: { year: number; onAbout: (section?: AboutSection) => void }) {
   const { t } = useI18n();
@@ -28,6 +29,15 @@ export function AppFooter({ year, onAbout }: { year: number; onAbout: (section?:
           >
             <Instagram className="size-4" aria-hidden />
             <span dir="ltr">@{INSTAGRAM_HANDLE}</span>
+          </a>
+          <a
+            href={REPOSITORY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+          >
+            <CodeXml className="size-4" aria-hidden />
+            {t("footer.source")}
           </a>
         </nav>
       </div>

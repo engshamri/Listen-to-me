@@ -19,12 +19,24 @@ test("pasting very long text keeps the editor bounded and the layout stable (des
   await expect(page.getByText(/parts/).first()).toBeVisible();
 });
 
-test("the old long voice list is gone: the page shows the selected voice, favorites and a browse button", async ({ page }) => {
+test("the voice section shows the selected voice, favorites and a browse button instead of a full list", async ({ page }) => {
   await openFresh(page);
   await expect(page.getByRole("listbox")).toHaveCount(0);
   await expect(page.getByRole("group", { name: "Current voice" })).toBeVisible();
   const optionsOnPage = await page.locator('[role="option"], button[aria-label^="Use "]').count();
   expect(optionsOnPage).toBe(0);
+});
+
+test("footer and About credit the owner and link to Instagram and the source code", async ({ page }) => {
+  await openFresh(page);
+  const footer = page.getByRole("contentinfo");
+  await expect(footer).toContainText(`© ${new Date().getFullYear()} Yousif AL_Shamri. All rights reserved.`);
+  await expect(footer.getByRole("link", { name: "@mmmmn" })).toHaveAttribute("href", "https://www.instagram.com/mmmmn/");
+  await expect(footer.getByRole("link", { name: "Source code" })).toHaveAttribute("href", "https://github.com/engshamri/asmani");
+  await footer.getByRole("button", { name: "About", exact: true }).click();
+  const about = page.getByRole("dialog", { name: "About Listen to me" });
+  await expect(about).toContainText("Yousif AL_Shamri");
+  await expect(about.getByRole("link", { name: "Source code on GitHub" })).toHaveAttribute("href", "https://github.com/engshamri/asmani");
 });
 
 test("task order matches keyboard order: text → voice → settings → generate", async ({ page }) => {

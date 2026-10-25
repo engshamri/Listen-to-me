@@ -314,6 +314,7 @@ const en = {
       "Listen to me (اسمعني) turns written text into natural-sounding speech in {languages} languages, with built-in translation and TXT/PDF import.",
     creator: "Created by",
     instagram: "Instagram",
+    source: "Source code on GitHub",
     privacyTitle: "Privacy",
     privacy1: "To create audio, your text is sent to Microsoft's Edge text-to-speech service. Translation sends text to Google Translate.",
     privacy2: "TXT and PDF files are read in your browser and are never uploaded. Text recognition (OCR) for scanned pages also runs in your browser.",
@@ -333,6 +334,7 @@ const en = {
     rights: "© {year} Yousif AL_Shamri. All rights reserved.",
     privacy: "Privacy",
     about: "About",
+    source: "Source code",
     credits: "Voices by Microsoft Edge · Translation by Google Translate",
   },
   themes: {

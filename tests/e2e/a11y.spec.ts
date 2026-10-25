@@ -3,6 +3,15 @@ import { expect, test, type Page } from "@playwright/test";
 import { openBrowser, openFresh } from "./helpers";
 
 async function scan(page: Page, label: string) {
+  // Dialogs fade and zoom in; a scan during the animation measures half-transparent text.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   const summary = results.violations.map((v) => `${v.impact} ${v.id}: ${v.help} (${v.nodes.length}) e.g. ${v.nodes[0]?.target.join(" ")}`);
   if (summary.length) console.log(`[${label}]\n  ${summary.join("\n  ")}`);
@@ -47,10 +56,22 @@ test("PDF import and OCR dialogs have no violations (English and Arabic)", async
     await page.context().addCookies([{ name: "locale", value: locale, url: "http://127.0.0.1" }]);
     await page.goto("/");
     await page.setInputFiles('input[type="file"]', { name: "mixed.pdf", mimeType: "application/pdf", buffer: pdf });
+    await expect(page.getByRole("dialog").getByRole("button", { name: extract })).toBeVisible();
     await scan(page, `${locale}/pdf pages`);
     await page.getByRole("dialog").getByRole("button", { name: extract }).click();
     await expect(page.getByRole("dialog").getByRole("combobox")).toBeVisible();
     await scan(page, `${locale}/ocr offer`);
+  }
+});
+
+test("About dialog has no violations (English and Arabic)", async ({ page }) => {
+  await openFresh(page);
+  for (const [locale, about] of [["en", "About"], ["ar", "حول الموقع"]]) {
+    await page.context().addCookies([{ name: "locale", value: locale, url: "http://127.0.0.1" }]);
+    await page.goto("/");
+    await page.getByRole("contentinfo").getByRole("button", { name: about, exact: true }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await scan(page, `${locale}/about`);
   }
 });
 
