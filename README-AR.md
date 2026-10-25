@@ -2,7 +2,9 @@
 
 **منصة لتحويل النص إلى كلام وترجمته بلغات متعددة، تعمل على جهازك.** اكتب النص أو الصقه أو ارفع ملف TXT أو PDF (بما في ذلك ملفات PDF الممسوحة ضوئياً عبر التعرّف الضوئي المدمج)، وترجمه إن شئت، ثم اختر واحداً من 322 صوتاً عصبياً في 75 لغة، ونزّل الصوت بصيغة MP3 أو M4A أو فيديو MP4 حقيقي.
 
-من إنشاء وملكية **يوسف الشمري (Yousif AL_Shamri)** · إنستغرام [@mmmmn](https://www.instagram.com/mmmmn/)
+من إنشاء وتطوير **يوسف الشمري (Yousif AL_Shamri)** · GitHub [@engshamri](https://github.com/engshamri) · إنستغرام [@mmmmn](https://www.instagram.com/mmmmn/)
+
+يحمل المستودع اسم `asmani`، وهو كتابة كلمة «اسمعني» بالحروف اللاتينية.
 
 > English: see [README.md](README.md).
 
@@ -28,7 +30,7 @@
 
 **المتطلبات:** [Node.js 20.9 أو أحدث](https://nodejs.org) و[Python 3.9 أو أحدث](https://www.python.org/downloads/) (علّم على «Add python.exe to PATH» أثناء التثبيت). أداة ffmpeg اختيارية لتصدير M4A وMP4. ويلزم اتصال بالإنترنت أثناء توليد الصوت أو الترجمة.
 
-افتح الطرفية (PowerShell أو موجه الأوامر) داخل مجلد المشروع واكتب:
+افتح الطرفية (PowerShell أو موجه الأوامر) في المجلد الذي تريد حفظ المشروع فيه، واكتب:
 
 ```bash
 git clone https://github.com/engshamri/asmani.git
@@ -58,6 +60,32 @@ python server.py --check          # فحص البيئة فقط
 - ويندوز: `winget install Gyan.FFmpeg` ثم افتح طرفية جديدة.
 - ماك: `brew install ffmpeg`
 - لينكس/WSL: `sudo apt install ffmpeg`
+
+### التثبيت اليدوي (دون سكربت التشغيل)
+
+```bash
+python -m pip install -r requirements.txt
+npm install          # ينسخ أيضاً ملفات pdf.js ومحرك التعرّف الضوئي إلى مجلد public/
+npm run build
+npm start            # http://localhost:3000
+```
+
+إذا كان على جهازك أكثر من نسخة من Python، فحدّد النسخة التي ثُبّتت فيها `edge-tts` عبر المتغير `PYTHON_BIN` (راجع `.env.example`).
+
+## الإعدادات
+
+يعمل الموقع دون أي إعداد. لتغيير القيم الافتراضية انسخ الملف `.env.example` إلى `.env.local`. من الإعدادات المتاحة: رابط الموقع لمعاينات المشاركة، ومسارا Python وffmpeg، وحدود التزامن وعدد الطلبات، ومزوّد الترجمة (نقطة Google المجانية أو خادم [LibreTranslate](https://libretranslate.com) خاص بك)، وإتاحة الصوت الاحتياطي الاختياري، و`TRUST_PROXY` عند التشغيل خلف خادم وكيل. ملفات `.env*.local` مستبعدة من Git، فلا تضع مفاتيح حقيقية في أي ملف آخر.
+
+## الاختبارات
+
+| الأمر | النتيجة في آخر تشغيل كامل (2026-10-26، ويندوز 11) |
+|---|---|
+| `npm run typecheck` و`npm run lint` و`npm run build` | دون أخطاء أو تحذيرات |
+| `npm test` (اختبارات الوحدات) | نجح 115 اختباراً |
+| `npm run test:e2e` (اختبارات المتصفح، ومنها فحوص إمكانية الوصول WCAG 2.2) | نجح 51 اختباراً |
+| `npm run test:live` (اختبارات الواجهة البرمجية مع خدمات الكلام والترجمة الحقيقية) | نجح 25 اختباراً |
+
+طريقة التشغيل وتفاصيل ما تغطيه الاختبارات في [docs/TESTING.md](docs/TESTING.md) (بالإنجليزية).
 
 ## الخصوصية
 
@@ -91,6 +119,11 @@ python server.py --check          # فحص البيئة فقط
 | ظهور حروف غريبة بعد استيراد ملف TXT | اختر ترميزاً آخر من شريط الملف فوق المحرر |
 | «لم تستجب خدمة الكلام» | تحقّق من الإنترنت واضغط «إعادة المحاولة»؛ الأجزاء الجاهزة محفوظة |
 | استيراد PDF أو التعرّف الضوئي لا يعمل بعد تثبيت يدوي | شغّل `npm install` (أو `node scripts/copy-vendor-assets.mjs`) لنسخ ملفات المحرك إلى مجلد `public/` |
+
+## الدعم والتواصل
+
+- للإبلاغ عن مشكلة أو طرح سؤال: [GitHub Issues](https://github.com/engshamri/asmani/issues)
+- المطوّر: يوسف الشمري (Yousif AL_Shamri) · GitHub [@engshamri](https://github.com/engshamri) · إنستغرام [@mmmmn](https://www.instagram.com/mmmmn/)
 
 ## الحقوق
 

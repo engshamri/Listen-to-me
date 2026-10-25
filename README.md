@@ -2,7 +2,9 @@
 
 **Multilingual text-to-speech and translation, running on your own computer.** Type, paste or upload text (TXT, PDF, or scanned PDF through built-in OCR), translate it if you like, pick one of 322 neural voices in 75 languages, and download natural-sounding speech as MP3, M4A, or a real MP4 video.
 
-Created and owned by **Yousif AL_Shamri** · Instagram [@mmmmn](https://www.instagram.com/mmmmn/)
+Created and maintained by **Yousif AL_Shamri** · GitHub [@engshamri](https://github.com/engshamri) · Instagram [@mmmmn](https://www.instagram.com/mmmmn/)
+
+The Arabic name اسمعني (*Asma'ni*) means “listen to me”; its transliteration gives the repository its name, `asmani`.
 
 > العربية: راجع [README-AR.md](README-AR.md) لدليل التشغيل الكامل باللغة العربية.
 
@@ -128,13 +130,13 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Testing
 
-All of the following were run for this version on Windows 11 (Node 24, Python 3.14, Microsoft Edge, ffmpeg 9). Commands and coverage: [docs/TESTING.md](docs/TESTING.md).
+All of the following were run on Windows 11 (Node 24, Python 3.14, Microsoft Edge, ffmpeg 9) on 2026-10-26, except the multi-part audio check (2026-10-25; the speech pipeline has not changed since). Commands and coverage: [docs/TESTING.md](docs/TESTING.md).
 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
 | `npm test` (unit) | 115 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 49 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 51 passed |
 | `npm run test:live` (API against a running server, real speech/translation/ffmpeg) | 25 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | `npm audit` | 0 vulnerabilities |
@@ -183,6 +185,11 @@ Automated tests cannot judge how natural a voice sounds; docs/TESTING.md include
 | PDF import or OCR does nothing after a manual install | Run `npm install` (or `node scripts/copy-vendor-assets.mjs`) to copy the engine files into `public/` |
 | API calls return 403 behind a reverse proxy | Set `TRUST_PROXY=true` so the public host name from `X-Forwarded-Host` is used |
 | PowerShell blocks `run.ps1` | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, or just run `python server.py` |
+
+## Support and contact
+
+- Bug reports and questions: [GitHub Issues](https://github.com/engshamri/asmani/issues)
+- Maintainer: Yousif AL_Shamri ([@engshamri](https://github.com/engshamri) on GitHub, [@mmmmn](https://www.instagram.com/mmmmn/) on Instagram)
 
 ## License
 

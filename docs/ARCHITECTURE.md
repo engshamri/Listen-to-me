@@ -15,7 +15,9 @@ scripts/
                              WebAssembly cores, Arabic/English data) into public/ (git-ignored)
   live-check.mjs             End-to-end API checks against a running server
   voice-qa/run_audit.py      Voice quality audit (audio checks + speech recognition) → voice-quality.json
-  voice-qa/write_report.py   docs/VOICE-QUALITY.md from the audit's raw results
+  voice-qa/reliability.py    Repeated synthesis attempts for voices that fail intermittently
+  voice-qa/apply_ratings.py  Applies human listening ratings exported from the review sheet
+  voice-qa/write_report.py   docs/VOICE-QUALITY.md from the audit's raw results (+ findings.md)
 src/
   app/
     layout.tsx               Reads locale/theme cookies → <html lang dir data-theme> (no flash)
