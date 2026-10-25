@@ -114,10 +114,6 @@ export const EMPTY_FILTERS: VoiceFilters = {
   multilingualOnly: false,
 };
 
-export function hasActiveFilters(f: VoiceFilters): boolean {
-  return Boolean(f.lang || f.country || f.region || f.gender || f.personality || f.multilingualOnly);
-}
-
 /** Search spans every voice unless a filter has been chosen explicitly. */
 export function filterVoices(f: VoiceFilters): Voice[] {
   return VOICES.filter(
@@ -177,18 +173,6 @@ export const VOICE_LANGUAGES: LanguageOption[] = (() => {
   }
   return [...map.values()];
 })();
-
-export function countriesFor(lang: string | null): { code: string; name: LocalizedName; count: number }[] {
-  const map = new Map<string, { code: string; name: LocalizedName; count: number }>();
-  for (const v of VOICES) {
-    if (lang && v.lang !== lang) continue;
-    if (!v.country || !v.countryName) continue;
-    const o = map.get(v.country);
-    if (o) o.count++;
-    else map.set(v.country, { code: v.country, name: v.countryName, count: 1 });
-  }
-  return [...map.values()];
-}
 
 export const PERSONALITIES: string[] = [...new Set(VOICES.flatMap((v) => v.personalities))].sort();
 

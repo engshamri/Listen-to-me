@@ -42,5 +42,3 @@ export function multilingualVerifiedFor(lang: string): string[] {
     .filter(([, langs]) => langs.includes(lang))
     .map(([id]) => id);
 }
-
-export const QUALITY_AUDIT_DATE = file.generatedAt;
