@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./themes.css";
+
+/* Components never use `dark:`; themes switch tokens instead. */
+@custom-variant dark (&:where([data-scheme="dark"], [data-scheme="dark"] *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --font-sans: var(--font-ui);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+
+  --shadow-card: var(--shadow);
+  --shadow-elevated: var(--shadow-lg);
+}
+
+:root {
+  --font-ui: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+/* Arabic interface: prefer the Arabic face; its Latin glyphs match it better. */
+:root:lang(ar) {
+  --font-ui: var(--font-arabic), var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    /* A single, very soft tint of the theme color at the top of the page. */
+    background-image: radial-gradient(ellipse 80% 420px at 50% -120px, var(--bg-glow), transparent 75%);
+    background-repeat: no-repeat;
+  }
+  :lang(ar) body {
+    font-feature-settings: normal;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 28%, transparent);
+  }
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* Thin, theme-aware scrollbars for inner scroll areas. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* Long voice lists: skip layout/paint work for rows that are off screen. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
+/* Smooth color change while switching themes (class is added for ~400 ms only). */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    color 300ms ease,
+    fill 300ms ease,
+    box-shadow 300ms ease !important;
+}
+
+@keyframes indeterminate {
+  0% {
+    inset-inline-start: -35%;
+  }
+  100% {
+    inset-inline-start: 100%;
+  }
+}
+.progress-indeterminate {
+  animation: indeterminate 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .progress-indeterminate {
+    animation: none;
+    inset-inline-start: 0 !important;
+    width: 100% !important;
+    opacity: 0.5;
+  }
+}

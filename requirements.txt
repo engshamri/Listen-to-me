@@ -1,0 +1,2 @@
+# Speech engine used by scripts/edge_synth.py (installed automatically by `python server.py`).
+edge-tts>=7.0.0,<8

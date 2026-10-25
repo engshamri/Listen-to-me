@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+
+# builds
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# generated at install/build time (scripts/copy-vendor-assets.mjs)
+public/pdf.worker.min.mjs
+public/ocr/
+
+# caches and temporary files (voice previews, legacy temp dir)
+.cache/
+.tmp-tts/
+
+# environment and secrets
+.env
+.env*.local
+
+# tests
+test-results/
+playwright-report/
+coverage/
+
+# logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

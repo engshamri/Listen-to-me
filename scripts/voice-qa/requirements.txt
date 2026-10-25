@@ -1,0 +1,5 @@
+# Tools for scripts/voice-qa/run_audit.py only (not needed to run the app).
+faster-whisper>=1.1,<2
+edge-tts>=7.0.0,<8
+# Traditional -> Simplified Chinese when comparing transcripts
+zhconv>=1.4

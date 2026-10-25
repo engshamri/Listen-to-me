@@ -1,0 +1,3126 @@
+{
+ "generatedAt": "2026-10-25T15:39:21Z",
+ "method": {
+  "asrModel": "large-v3",
+  "confirmModel": "large-v3",
+  "samples": "one paragraph per voice, same content in every language"
+ },
+ "voices": {
+  "ar-AE-FatimaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 0.998,
+   "lufs": -21.3,
+   "maxPause": 1.05,
+   "rate": 7.11
+  },
+  "ar-AE-HamdanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 1.0,
+   "lufs": -21.7,
+   "maxPause": 1.04,
+   "rate": 7.27
+  },
+  "ar-BH-LailaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 1.0,
+   "lufs": -22.1,
+   "maxPause": 0.97,
+   "rate": 7.82
+  },
+  "ar-BH-AliNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 0.999,
+   "lufs": -20.4,
+   "maxPause": 0.92,
+   "rate": 8.73
+  },
+  "ar-DZ-AminaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 0.999,
+   "lufs": -21.2,
+   "maxPause": 1.05,
+   "rate": 7.11
+  },
+  "ar-DZ-IsmaelNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -21.7,
+   "maxPause": 1.04,
+   "rate": 7.27
+  },
+  "ar-EG-SalmaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -22.2,
+   "maxPause": 1.03,
+   "rate": 7.45
+  },
+  "ar-EG-ShakirNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 0.999,
+   "lufs": -19.9,
+   "maxPause": 1.03,
+   "rate": 8.46
+  },
+  "ar-IQ-RanaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.999,
+   "lufs": -22.1,
+   "maxPause": 1.07,
+   "rate": 7.07
+  },
+  "ar-IQ-BasselNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 0.999,
+   "lufs": -20.3,
+   "maxPause": 1.0,
+   "rate": 8.16
+  },
+  "ar-JO-SanaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.999,
+   "lufs": -22.2,
+   "maxPause": 1.07,
+   "rate": 7.07
+  },
+  "ar-JO-TaimNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 1.0,
+   "lufs": -20.8,
+   "maxPause": 1.0,
+   "rate": 8.09
+  },
+  "ar-KW-NouraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.998,
+   "lufs": -21.3,
+   "maxPause": 0.95,
+   "rate": 7.86
+  },
+  "ar-KW-FahedNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -21.7,
+   "maxPause": 0.94,
+   "rate": 8.04
+  },
+  "ar-LB-LaylaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 0.999,
+   "lufs": -21.2,
+   "maxPause": 1.05,
+   "rate": 7.11
+  },
+  "ar-LB-RamiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -21.8,
+   "maxPause": 1.04,
+   "rate": 7.26
+  },
+  "ar-LY-ImanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.999,
+   "lufs": -22.2,
+   "maxPause": 0.98,
+   "rate": 7.82
+  },
+  "ar-LY-OmarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -20.6,
+   "maxPause": 1.0,
+   "rate": 8.0
+  },
+  "ar-MA-MounaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 0.999,
+   "lufs": -21.2,
+   "maxPause": 0.95,
+   "rate": 7.86
+  },
+  "ar-MA-JamalNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -21.7,
+   "maxPause": 0.94,
+   "rate": 8.03
+  },
+  "ar-OM-AyshaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.996,
+   "lufs": -20.4,
+   "maxPause": 0.92,
+   "rate": 8.78
+  },
+  "ar-OM-AbdullahNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 0.993,
+   "lufs": -22.4,
+   "maxPause": 1.03,
+   "rate": 9.02
+  },
+  "ar-QA-AmalNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 1.0,
+   "lufs": -22.2,
+   "maxPause": 0.93,
+   "rate": 8.19
+  },
+  "ar-QA-MoazNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 0.999,
+   "lufs": -20.3,
+   "maxPause": 1.0,
+   "rate": 8.1
+  },
+  "ar-SA-ZariyahNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 0.998,
+   "lufs": -21.3,
+   "maxPause": 0.99,
+   "rate": 7.49
+  },
+  "ar-SA-HamedNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 1.0,
+   "lufs": -21.6,
+   "maxPause": 0.98,
+   "rate": 7.65
+  },
+  "ar-SY-AmanyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.137,
+   "langProb": 0.994,
+   "lufs": -21.1,
+   "maxPause": 0.99,
+   "rate": 8.76
+  },
+  "ar-SY-LaithNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.094,
+   "langProb": 0.981,
+   "lufs": -22.4,
+   "maxPause": 1.02,
+   "rate": 9.16
+  },
+  "ar-TN-ReemNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 0.998,
+   "lufs": -20.3,
+   "maxPause": 0.97,
+   "rate": 8.16
+  },
+  "ar-TN-HediNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 0.998,
+   "lufs": -22.1,
+   "maxPause": 1.01,
+   "rate": 8.52
+  },
+  "ar-YE-MaryamNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 1.0,
+   "lufs": -22.1,
+   "maxPause": 0.99,
+   "rate": 7.81
+  },
+  "ar-YE-SalehNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.998,
+   "lufs": -19.8,
+   "maxPause": 0.99,
+   "rate": 8.2
+  },
+  "af-ZA-AdriNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.057,
+   "langProb": 0.985,
+   "lufs": -21.8,
+   "maxPause": 0.95,
+   "rate": 12.01
+  },
+  "af-ZA-WillemNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.075,
+   "langProb": 0.994,
+   "lufs": -22.9,
+   "maxPause": 1.0,
+   "rate": 12.69
+  },
+  "am-ET-MekdesNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.922,
+   "langProb": 0.442,
+   "lufs": -23.7,
+   "maxPause": 0.93,
+   "rate": 8.93
+  },
+  "am-ET-AmehaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.931,
+   "langProb": 0.333,
+   "lufs": -25.4,
+   "maxPause": 0.96,
+   "rate": 8.57
+  },
+  "az-AZ-BanuNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.043,
+   "langProb": 0.878,
+   "lufs": -23.0,
+   "maxPause": 0.93,
+   "rate": 11.44
+  },
+  "az-AZ-BabekNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.043,
+   "langProb": 0.972,
+   "lufs": -25.2,
+   "maxPause": 0.96,
+   "rate": 11.38
+  },
+  "bg-BG-KalinaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.996,
+   "lufs": -21.7,
+   "maxPause": 0.94,
+   "rate": 11.15
+  },
+  "bg-BG-BorislavNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.04,
+   "langProb": 0.991,
+   "lufs": -20.5,
+   "maxPause": 0.95,
+   "rate": 11.99
+  },
+  "bn-BD-NabanitaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.133,
+   "langProb": 0.945,
+   "lufs": -21.6,
+   "maxPause": 0.98,
+   "rate": 10.69
+  },
+  "bn-BD-PradeepNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.14,
+   "langProb": 0.866,
+   "lufs": -23.1,
+   "maxPause": 1.0,
+   "rate": 10.74
+  },
+  "bn-IN-TanishaaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.126,
+   "langProb": 0.778,
+   "lufs": -21.8,
+   "maxPause": 0.94,
+   "rate": 9.17
+  },
+  "bn-IN-BashkarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.175,
+   "langProb": 0.847,
+   "lufs": -22.4,
+   "maxPause": 0.97,
+   "rate": 9.52
+  },
+  "bs-BA-VesnaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.996,
+   "lufs": -21.5,
+   "maxPause": 0.95,
+   "rate": 10.81
+  },
+  "bs-BA-GoranNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.996,
+   "lufs": -22.4,
+   "maxPause": 0.97,
+   "rate": 10.82
+  },
+  "ca-ES-JoanaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.018,
+   "langProb": 0.993,
+   "lufs": -19.7,
+   "maxPause": 1.02,
+   "rate": 9.71
+  },
+  "ca-ES-EnricNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.018,
+   "langProb": 0.993,
+   "lufs": -21.1,
+   "maxPause": 1.0,
+   "rate": 10.49
+  },
+  "cs-CZ-VlastaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -16.0,
+   "maxPause": 0.97,
+   "rate": 9.58
+  },
+  "cs-CZ-AntoninNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.3,
+   "maxPause": 1.29,
+   "rate": 11.41
+  },
+  "cy-GB-NiaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.006,
+   "langProb": 0.978,
+   "lufs": -21.5,
+   "maxPause": 0.89,
+   "rate": 10.96
+  },
+  "cy-GB-AledNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.031,
+   "langProb": 0.986,
+   "lufs": -22.2,
+   "maxPause": 0.86,
+   "rate": 12.02
+  },
+  "da-DK-ChristelNeural": {
+   "status": "disabled",
+   "flags": [
+    "synthesis_failed",
+    "unreliable_synthesis"
+   ],
+   "cer": null,
+   "langProb": null,
+   "lufs": null,
+   "maxPause": null,
+   "rate": null
+  },
+  "da-DK-JeppeNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.057,
+   "langProb": 0.995,
+   "lufs": -20.2,
+   "maxPause": 1.04,
+   "rate": 11.8
+  },
+  "de-AT-IngridNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.998,
+   "lufs": -19.5,
+   "maxPause": 0.98,
+   "rate": 12.44
+  },
+  "de-AT-JonasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -20.4,
+   "maxPause": 0.97,
+   "rate": 12.75
+  },
+  "de-CH-LeniNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.04,
+   "langProb": 0.993,
+   "lufs": -18.2,
+   "maxPause": 0.98,
+   "rate": 11.45
+  },
+  "de-CH-JanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -20.3,
+   "maxPause": 0.95,
+   "rate": 12.95
+  },
+  "de-DE-AmalaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.998,
+   "lufs": -20.2,
+   "maxPause": 1.01,
+   "rate": 10.71
+  },
+  "de-DE-KatjaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -20.7,
+   "maxPause": 0.97,
+   "rate": 11.33
+  },
+  "de-DE-SeraphinaMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.996,
+   "lufs": -20.7,
+   "maxPause": 0.53,
+   "rate": 11.84
+  },
+  "de-DE-ConradNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.998,
+   "lufs": -20.6,
+   "maxPause": 1.03,
+   "rate": 12.52
+  },
+  "de-DE-FlorianMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -20.9,
+   "maxPause": 0.53,
+   "rate": 13.87
+  },
+  "de-DE-KillianNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -21.0,
+   "maxPause": 1.05,
+   "rate": 11.78
+  },
+  "el-GR-AthinaNeural": {
+   "status": "disabled",
+   "flags": [
+    "unreliable_synthesis"
+   ],
+   "cer": 0.027,
+   "langProb": 0.999,
+   "lufs": -18.0,
+   "maxPause": 0.98,
+   "rate": 13.8
+  },
+  "el-GR-NestorasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.032,
+   "langProb": 1.0,
+   "lufs": -21.1,
+   "maxPause": 1.08,
+   "rate": 13.79
+  },
+  "en-AU-NatashaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.8,
+   "maxPause": 0.95,
+   "rate": 12.46
+  },
+  "en-AU-WilliamMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.994,
+   "lufs": -20.7,
+   "maxPause": 0.51,
+   "rate": 14.52
+  },
+  "en-CA-ClaraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -20.7,
+   "maxPause": 0.99,
+   "rate": 12.79
+  },
+  "en-CA-LiamNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -22.1,
+   "maxPause": 0.94,
+   "rate": 14.02
+  },
+  "en-GB-LibbyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.7,
+   "maxPause": 0.93,
+   "rate": 11.89
+  },
+  "en-GB-MaisieNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.995,
+   "lufs": -21.3,
+   "maxPause": 0.94,
+   "rate": 11.99
+  },
+  "en-GB-SoniaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.7,
+   "maxPause": 0.47,
+   "rate": 13.24
+  },
+  "en-GB-RyanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.994,
+   "lufs": -21.1,
+   "maxPause": 0.99,
+   "rate": 13.21
+  },
+  "en-GB-ThomasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.99,
+   "lufs": -21.6,
+   "maxPause": 0.97,
+   "rate": 13.18
+  },
+  "en-HK-YanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.8,
+   "maxPause": 1.04,
+   "rate": 12.34
+  },
+  "en-HK-SamNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.9,
+   "maxPause": 1.23,
+   "rate": 11.73
+  },
+  "en-IE-EmilyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.996,
+   "lufs": -21.6,
+   "maxPause": 1.02,
+   "rate": 12.03
+  },
+  "en-IE-ConnorNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.1,
+   "maxPause": 0.94,
+   "rate": 13.28
+  },
+  "en-IN-NeerjaExpressiveNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -19.7,
+   "maxPause": 1.04,
+   "rate": 11.78
+  },
+  "en-IN-NeerjaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -21.3,
+   "maxPause": 1.0,
+   "rate": 11.6
+  },
+  "en-IN-PrabhatNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.997,
+   "lufs": -16.5,
+   "maxPause": 0.95,
+   "rate": 10.76
+  },
+  "en-KE-AsiliaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.996,
+   "lufs": -21.0,
+   "maxPause": 0.96,
+   "rate": 12.32
+  },
+  "en-KE-ChilembaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.94,
+   "lufs": -21.6,
+   "maxPause": 0.99,
+   "rate": 13.39
+  },
+  "en-NG-EzinneNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.987,
+   "lufs": -20.4,
+   "maxPause": 0.94,
+   "rate": 12.54
+  },
+  "en-NG-AbeoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.994,
+   "lufs": -21.6,
+   "maxPause": 0.97,
+   "rate": 13.23
+  },
+  "en-NZ-MollyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.8,
+   "maxPause": 1.0,
+   "rate": 11.85
+  },
+  "en-NZ-MitchellNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -21.8,
+   "maxPause": 1.06,
+   "rate": 12.75
+  },
+  "en-PH-RosaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.912,
+   "lufs": -21.0,
+   "maxPause": 0.95,
+   "rate": 12.02
+  },
+  "en-PH-JamesNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.982,
+   "lufs": -22.4,
+   "maxPause": 1.04,
+   "rate": 12.98
+  },
+  "en-SG-LunaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -20.5,
+   "maxPause": 1.01,
+   "rate": 11.87
+  },
+  "en-SG-WayneNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.994,
+   "lufs": -21.7,
+   "maxPause": 1.02,
+   "rate": 11.88
+  },
+  "en-TZ-ImaniNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.992,
+   "lufs": -20.5,
+   "maxPause": 0.96,
+   "rate": 11.86
+  },
+  "en-TZ-ElimuNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.917,
+   "lufs": -21.4,
+   "maxPause": 0.97,
+   "rate": 12.92
+  },
+  "en-US-AnaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.7,
+   "maxPause": 0.98,
+   "rate": 11.08
+  },
+  "en-US-AriaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.997,
+   "lufs": -20.2,
+   "maxPause": 0.96,
+   "rate": 12.77
+  },
+  "en-US-AvaMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.994,
+   "lufs": -18.4,
+   "maxPause": 0.44,
+   "rate": 13.47
+  },
+  "en-US-AvaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.992,
+   "lufs": -20.2,
+   "maxPause": 0.48,
+   "rate": 14.64
+  },
+  "en-US-EmmaMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -18.1,
+   "maxPause": 0.44,
+   "rate": 13.87
+  },
+  "en-US-EmmaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -17.9,
+   "maxPause": 0.43,
+   "rate": 13.87
+  },
+  "en-US-JennyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.8,
+   "maxPause": 1.0,
+   "rate": 12.95
+  },
+  "en-US-MichelleNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.2,
+   "maxPause": 1.05,
+   "rate": 13.5
+  },
+  "en-US-AndrewMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.999,
+   "lufs": -20.9,
+   "maxPause": 0.44,
+   "rate": 13.53
+  },
+  "en-US-AndrewNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 1.0,
+   "lufs": -19.9,
+   "maxPause": 0.44,
+   "rate": 14.96
+  },
+  "en-US-BrianMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -20.1,
+   "maxPause": 0.54,
+   "rate": 13.2
+  },
+  "en-US-BrianNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -20.1,
+   "maxPause": 0.54,
+   "rate": 13.2
+  },
+  "en-US-ChristopherNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -19.8,
+   "maxPause": 0.99,
+   "rate": 12.92
+  },
+  "en-US-EricNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.8,
+   "maxPause": 1.0,
+   "rate": 12.75
+  },
+  "en-US-GuyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -19.0,
+   "maxPause": 1.09,
+   "rate": 13.02
+  },
+  "en-US-RogerNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -23.8,
+   "maxPause": 0.87,
+   "rate": 12.92
+  },
+  "en-US-SteffanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.7,
+   "maxPause": 0.74,
+   "rate": 13.24
+  },
+  "en-ZA-LeahNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.011,
+   "langProb": 0.997,
+   "lufs": -20.4,
+   "maxPause": 0.92,
+   "rate": 12.01
+  },
+  "en-ZA-LukeNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.023,
+   "langProb": 0.831,
+   "lufs": -22.6,
+   "maxPause": 1.02,
+   "rate": 14.53
+  },
+  "es-AR-ElenaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -19.6,
+   "maxPause": 1.0,
+   "rate": 11.86
+  },
+  "es-AR-TomasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.03,
+   "langProb": 0.999,
+   "lufs": -19.9,
+   "maxPause": 0.99,
+   "rate": 12.7
+  },
+  "es-BO-SofiaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.6,
+   "maxPause": 0.87,
+   "rate": 13.26
+  },
+  "es-BO-MarceloNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 1.0,
+   "lufs": -19.6,
+   "maxPause": 0.92,
+   "rate": 12.63
+  },
+  "es-CL-CatalinaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.1,
+   "maxPause": 0.93,
+   "rate": 12.26
+  },
+  "es-CL-LorenzoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -19.3,
+   "maxPause": 0.96,
+   "rate": 13.21
+  },
+  "es-CO-SalomeNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -20.5,
+   "maxPause": 0.98,
+   "rate": 12.74
+  },
+  "es-CO-GonzaloNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 0.999,
+   "lufs": -21.4,
+   "maxPause": 1.01,
+   "rate": 14.08
+  },
+  "es-CR-MariaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.7,
+   "maxPause": 1.0,
+   "rate": 11.46
+  },
+  "es-CR-JuanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 0.998,
+   "lufs": -19.6,
+   "maxPause": 1.05,
+   "rate": 11.07
+  },
+  "es-CU-BelkysNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -21.6,
+   "maxPause": 0.88,
+   "rate": 12.87
+  },
+  "es-CU-ManuelNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.03,
+   "langProb": 1.0,
+   "lufs": -19.6,
+   "maxPause": 1.11,
+   "rate": 10.94
+  },
+  "es-DO-RamonaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.7,
+   "maxPause": 1.07,
+   "rate": 10.85
+  },
+  "es-DO-EmilioNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.997,
+   "lufs": -19.7,
+   "maxPause": 1.04,
+   "rate": 11.07
+  },
+  "es-EC-AndreaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.8,
+   "maxPause": 0.91,
+   "rate": 12.67
+  },
+  "es-EC-LuisNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -19.7,
+   "maxPause": 1.01,
+   "rate": 11.44
+  },
+  "es-ES-ElviraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -21.6,
+   "maxPause": 0.91,
+   "rate": 12.24
+  },
+  "es-ES-XimenaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -21.5,
+   "maxPause": 1.12,
+   "rate": 11.8
+  },
+  "es-ES-AlvaroNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.9,
+   "maxPause": 1.1,
+   "rate": 12.3
+  },
+  "es-GQ-TeresaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -21.7,
+   "maxPause": 0.88,
+   "rate": 12.86
+  },
+  "es-GQ-JavierNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.03,
+   "langProb": 0.999,
+   "lufs": -20.2,
+   "maxPause": 1.06,
+   "rate": 11.49
+  },
+  "es-GT-MartaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.7,
+   "maxPause": 0.87,
+   "rate": 13.26
+  },
+  "es-GT-AndresNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.8,
+   "maxPause": 0.89,
+   "rate": 13.0
+  },
+  "es-HN-KarlaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.6,
+   "maxPause": 1.0,
+   "rate": 11.44
+  },
+  "es-HN-CarlosNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.8,
+   "maxPause": 0.9,
+   "rate": 13.0
+  },
+  "es-MX-DaliaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.6,
+   "maxPause": 0.96,
+   "rate": 12.06
+  },
+  "es-MX-JorgeNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.6,
+   "maxPause": 0.96,
+   "rate": 12.03
+  },
+  "es-NI-YolandaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.6,
+   "maxPause": 1.07,
+   "rate": 10.85
+  },
+  "es-NI-FedericoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.9,
+   "maxPause": 0.92,
+   "rate": 12.64
+  },
+  "es-PA-MargaritaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.6,
+   "maxPause": 0.92,
+   "rate": 12.65
+  },
+  "es-PA-RobertoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.5,
+   "maxPause": 1.04,
+   "rate": 11.07
+  },
+  "es-PE-CamilaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.6,
+   "maxPause": 0.86,
+   "rate": 13.26
+  },
+  "es-PE-AlexNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.5,
+   "maxPause": 1.03,
+   "rate": 11.07
+  },
+  "es-PR-KarinaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -18.7,
+   "maxPause": 1.07,
+   "rate": 10.85
+  },
+  "es-PR-VictorNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -19.6,
+   "maxPause": 1.01,
+   "rate": 11.44
+  },
+  "es-PY-TaniaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.03,
+   "langProb": 0.999,
+   "lufs": -20.6,
+   "maxPause": 0.94,
+   "rate": 13.37
+  },
+  "es-PY-MarioNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 0.998,
+   "lufs": -21.4,
+   "maxPause": 0.96,
+   "rate": 14.78
+  },
+  "es-SV-LorenaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.8,
+   "maxPause": 0.88,
+   "rate": 13.26
+  },
+  "es-SV-RodrigoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -19.7,
+   "maxPause": 0.88,
+   "rate": 13.0
+  },
+  "es-US-PalomaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.7,
+   "maxPause": 0.91,
+   "rate": 12.66
+  },
+  "es-US-AlonsoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 0.999,
+   "lufs": -19.6,
+   "maxPause": 1.01,
+   "rate": 11.44
+  },
+  "es-UY-ValentinaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -19.6,
+   "maxPause": 0.95,
+   "rate": 12.46
+  },
+  "es-UY-MateoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.03,
+   "langProb": 0.999,
+   "lufs": -19.8,
+   "maxPause": 0.94,
+   "rate": 13.33
+  },
+  "es-VE-PaolaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.6,
+   "maxPause": 1.06,
+   "rate": 10.85
+  },
+  "es-VE-SebastianNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 1.0,
+   "lufs": -19.7,
+   "maxPause": 0.89,
+   "rate": 12.99
+  },
+  "et-EE-AnuNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.05,
+   "langProb": 0.994,
+   "lufs": -22.8,
+   "maxPause": 0.91,
+   "rate": 11.29
+  },
+  "et-EE-KertNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.043,
+   "langProb": 0.98,
+   "lufs": -22.6,
+   "maxPause": 0.92,
+   "rate": 11.3
+  },
+  "fa-IR-DilaraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.987,
+   "lufs": -23.7,
+   "maxPause": 0.93,
+   "rate": 10.24
+  },
+  "fa-IR-FaridNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.996,
+   "lufs": -24.1,
+   "maxPause": 0.92,
+   "rate": 9.8
+  },
+  "fi-FI-NooraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 1.0,
+   "lufs": -19.1,
+   "maxPause": 0.88,
+   "rate": 11.59
+  },
+  "fi-FI-HarriNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -23.0,
+   "maxPause": 1.02,
+   "rate": 11.58
+  },
+  "fil-PH-BlessicaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.027,
+   "langProb": 1.0,
+   "lufs": -23.0,
+   "maxPause": 0.9,
+   "rate": 12.71
+  },
+  "fil-PH-AngeloNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.032,
+   "langProb": 1.0,
+   "lufs": -20.0,
+   "maxPause": 0.93,
+   "rate": 12.9
+  },
+  "fr-BE-CharlineNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.054,
+   "langProb": 0.999,
+   "lufs": -20.1,
+   "maxPause": 0.95,
+   "rate": 14.09
+  },
+  "fr-BE-GerardNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.027,
+   "langProb": 0.999,
+   "lufs": -20.9,
+   "maxPause": 1.01,
+   "rate": 14.03
+  },
+  "fr-CA-SylvieNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.027,
+   "langProb": 1.0,
+   "lufs": -21.6,
+   "maxPause": 0.95,
+   "rate": 13.7
+  },
+  "fr-CA-AntoineNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.027,
+   "langProb": 1.0,
+   "lufs": -21.9,
+   "maxPause": 0.93,
+   "rate": 14.06
+  },
+  "fr-CA-JeanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.005,
+   "langProb": 0.999,
+   "lufs": -22.5,
+   "maxPause": 0.97,
+   "rate": 12.03
+  },
+  "fr-CA-ThierryNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.005,
+   "langProb": 1.0,
+   "lufs": -22.9,
+   "maxPause": 1.03,
+   "rate": 13.25
+  },
+  "fr-CH-ArianeNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 0.999,
+   "lufs": -17.8,
+   "maxPause": 1.07,
+   "rate": 14.33
+  },
+  "fr-CH-FabriceNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.054,
+   "langProb": 0.999,
+   "lufs": -22.0,
+   "maxPause": 1.12,
+   "rate": 14.82
+  },
+  "fr-FR-DeniseNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.059,
+   "langProb": 0.999,
+   "lufs": -20.5,
+   "maxPause": 0.99,
+   "rate": 13.58
+  },
+  "fr-FR-EloiseNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.054,
+   "langProb": 0.998,
+   "lufs": -21.4,
+   "maxPause": 0.95,
+   "rate": 13.45
+  },
+  "fr-FR-VivienneMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.054,
+   "langProb": 0.998,
+   "lufs": -20.0,
+   "maxPause": 0.48,
+   "rate": 16.73
+  },
+  "fr-FR-HenriNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.054,
+   "langProb": 0.999,
+   "lufs": -22.0,
+   "maxPause": 1.04,
+   "rate": 14.4
+  },
+  "fr-FR-RemyMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.054,
+   "langProb": 0.999,
+   "lufs": -22.7,
+   "maxPause": 0.57,
+   "rate": 15.17
+  },
+  "ga-IE-OrlaNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -21.3,
+   "maxPause": 0.92,
+   "rate": 11.85
+  },
+  "ga-IE-ColmNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -23.1,
+   "maxPause": 1.03,
+   "rate": 12.81
+  },
+  "gl-ES-SabelaNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.007,
+   "langProb": 0.782,
+   "lufs": -23.5,
+   "maxPause": 0.96,
+   "rate": 11.7
+  },
+  "gl-ES-RoiNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.013,
+   "langProb": 0.48,
+   "lufs": -23.3,
+   "maxPause": 1.02,
+   "rate": 12.36
+  },
+  "gu-IN-DhwaniNeural": {
+   "status": "review",
+   "flags": [
+    "long_pause",
+    "detector_confused_language"
+   ],
+   "cer": 0.572,
+   "langProb": 0.537,
+   "lufs": -20.4,
+   "maxPause": 4.55,
+   "rate": 6.02
+  },
+  "gu-IN-NiranjanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.572,
+   "langProb": 0.561,
+   "lufs": -17.2,
+   "maxPause": 1.2,
+   "rate": 7.93
+  },
+  "he-IL-HilaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.009,
+   "langProb": 0.994,
+   "lufs": -20.7,
+   "maxPause": 1.04,
+   "rate": 8.29
+  },
+  "he-IL-AvriNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.028,
+   "langProb": 0.99,
+   "lufs": -20.1,
+   "maxPause": 1.03,
+   "rate": 7.7
+  },
+  "hi-IN-SwaraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.05,
+   "langProb": 0.997,
+   "lufs": -20.6,
+   "maxPause": 1.14,
+   "rate": 8.55
+  },
+  "hi-IN-MadhurNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.025,
+   "langProb": 0.993,
+   "lufs": -17.7,
+   "maxPause": 1.48,
+   "rate": 8.18
+  },
+  "hr-HR-GabrijelaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.006,
+   "langProb": 0.997,
+   "lufs": -18.9,
+   "maxPause": 0.96,
+   "rate": 10.46
+  },
+  "hr-HR-SreckoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.013,
+   "langProb": 0.985,
+   "lufs": -20.2,
+   "maxPause": 0.96,
+   "rate": 11.02
+  },
+  "hu-HU-NoemiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -17.1,
+   "maxPause": 0.91,
+   "rate": 10.33
+  },
+  "hu-HU-TamasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.997,
+   "lufs": -20.6,
+   "maxPause": 0.94,
+   "rate": 11.78
+  },
+  "id-ID-GadisNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.057,
+   "langProb": 0.996,
+   "lufs": -20.0,
+   "maxPause": 1.01,
+   "rate": 9.72
+  },
+  "id-ID-ArdiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.046,
+   "langProb": 0.999,
+   "lufs": -17.2,
+   "maxPause": 1.01,
+   "rate": 12.55
+  },
+  "is-IS-GudrunNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.078,
+   "langProb": 0.946,
+   "lufs": -21.7,
+   "maxPause": 0.99,
+   "rate": 12.15
+  },
+  "is-IS-GunnarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.09,
+   "langProb": 0.931,
+   "lufs": -22.5,
+   "maxPause": 0.98,
+   "rate": 12.61
+  },
+  "it-IT-ElsaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 1.0,
+   "lufs": -20.2,
+   "maxPause": 0.32,
+   "rate": 13.66
+  },
+  "it-IT-IsabellaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.022,
+   "langProb": 1.0,
+   "lufs": -19.7,
+   "maxPause": 0.93,
+   "rate": 12.4
+  },
+  "it-IT-DiegoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -20.5,
+   "maxPause": 0.97,
+   "rate": 11.76
+  },
+  "it-IT-GiuseppeMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.6,
+   "maxPause": 0.5,
+   "rate": 12.88
+  },
+  "iu-Cans-CA-SiqiniqNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -20.9,
+   "maxPause": 1.01,
+   "rate": 5.7
+  },
+  "iu-Cans-CA-TaqqiqNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -20.3,
+   "maxPause": 0.89,
+   "rate": 5.92
+  },
+  "iu-Latn-CA-SiqiniqNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -20.8,
+   "maxPause": 1.01,
+   "rate": 9.9
+  },
+  "iu-Latn-CA-TaqqiqNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -20.3,
+   "maxPause": 0.88,
+   "rate": 10.37
+  },
+  "ja-JP-NanamiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -16.7,
+   "maxPause": 1.01,
+   "rate": 4.64
+  },
+  "ja-JP-KeitaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -19.8,
+   "maxPause": 0.99,
+   "rate": 5.25
+  },
+  "jv-ID-SitiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.147,
+   "langProb": 0.359,
+   "lufs": -21.0,
+   "maxPause": 0.95,
+   "rate": 10.55
+  },
+  "jv-ID-DimasNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.117,
+   "langProb": 0.894,
+   "lufs": -18.9,
+   "maxPause": 1.02,
+   "rate": 10.92
+  },
+  "ka-GE-EkaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.068,
+   "langProb": 0.939,
+   "lufs": -23.6,
+   "maxPause": 0.8,
+   "rate": 10.9
+  },
+  "ka-GE-GiorgiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.081,
+   "langProb": 0.986,
+   "lufs": -23.7,
+   "maxPause": 0.93,
+   "rate": 10.94
+  },
+  "kk-KZ-AigulNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.032,
+   "langProb": 0.983,
+   "lufs": -22.2,
+   "maxPause": 0.91,
+   "rate": 11.27
+  },
+  "kk-KZ-DauletNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.039,
+   "langProb": 0.987,
+   "lufs": -22.0,
+   "maxPause": 0.88,
+   "rate": 11.7
+  },
+  "km-KH-SreymomNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.794,
+   "langProb": 0.824,
+   "lufs": -21.6,
+   "maxPause": 0.0,
+   "rate": 14.83
+  },
+  "km-KH-PisethNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.817,
+   "langProb": 0.804,
+   "lufs": -23.3,
+   "maxPause": 0.0,
+   "rate": 15.11
+  },
+  "kn-IN-SapnaNeural": {
+   "status": "verified",
+   "flags": [
+    "cleared_on_second_text"
+   ],
+   "cer": 0.226,
+   "langProb": 0.975,
+   "lufs": -22.7,
+   "maxPause": 1.01,
+   "rate": 11.86
+  },
+  "kn-IN-GaganNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.11,
+   "langProb": 0.959,
+   "lufs": -21.6,
+   "maxPause": 0.94,
+   "rate": 12.35
+  },
+  "ko-KR-SunHiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -16.8,
+   "maxPause": 1.03,
+   "rate": 4.98
+  },
+  "ko-KR-HyunsuMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.995,
+   "lufs": -18.2,
+   "maxPause": 0.98,
+   "rate": 4.79
+  },
+  "ko-KR-InJoonNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.013,
+   "langProb": 0.999,
+   "lufs": -19.8,
+   "maxPause": 1.5,
+   "rate": 4.68
+  },
+  "lo-LA-KeomanyNeural": {
+   "status": "audio_only",
+   "flags": [
+    "asr_unsupported_language"
+   ],
+   "cer": null,
+   "langProb": null,
+   "lufs": -20.7,
+   "maxPause": 0.98,
+   "rate": 12.56
+  },
+  "lo-LA-ChanthavongNeural": {
+   "status": "audio_only",
+   "flags": [
+    "asr_unsupported_language"
+   ],
+   "cer": null,
+   "langProb": null,
+   "lufs": -21.9,
+   "maxPause": 1.01,
+   "rate": 13.27
+  },
+  "lt-LT-OnaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.021,
+   "langProb": 0.999,
+   "lufs": -21.0,
+   "maxPause": 1.04,
+   "rate": 10.45
+  },
+  "lt-LT-LeonasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -22.0,
+   "maxPause": 1.1,
+   "rate": 10.38
+  },
+  "lv-LV-EveritaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 0.998,
+   "lufs": -24.2,
+   "maxPause": 1.14,
+   "rate": 10.56
+  },
+  "lv-LV-NilsNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.006,
+   "langProb": 0.996,
+   "lufs": -20.0,
+   "maxPause": 1.02,
+   "rate": 11.41
+  },
+  "mk-MK-MarijaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.03,
+   "langProb": 0.442,
+   "lufs": -20.5,
+   "maxPause": 1.04,
+   "rate": 11.83
+  },
+  "mk-MK-AleksandarNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.03,
+   "langProb": 0.913,
+   "lufs": -21.1,
+   "maxPause": 1.03,
+   "rate": 11.67
+  },
+  "ml-IN-SobhanaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 1.0,
+   "langProb": 0.894,
+   "lufs": -21.4,
+   "maxPause": 0.97,
+   "rate": 12.79
+  },
+  "ml-IN-MidhunNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 1.0,
+   "langProb": 0.856,
+   "lufs": -23.3,
+   "maxPause": 1.0,
+   "rate": 13.36
+  },
+  "mn-MN-YesuiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.325,
+   "langProb": 0.566,
+   "lufs": -23.6,
+   "maxPause": 0.89,
+   "rate": 12.67
+  },
+  "mn-MN-BataaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.282,
+   "langProb": 0.869,
+   "lufs": -24.9,
+   "maxPause": 0.9,
+   "rate": 12.67
+  },
+  "mr-IN-AarohiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.099,
+   "langProb": 0.907,
+   "lufs": -20.7,
+   "maxPause": 1.02,
+   "rate": 8.7
+  },
+  "mr-IN-ManoharNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.099,
+   "langProb": 0.62,
+   "lufs": -18.0,
+   "maxPause": 1.02,
+   "rate": 8.76
+  },
+  "ms-MY-YasminNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.042,
+   "langProb": 0.998,
+   "lufs": -19.4,
+   "maxPause": 1.01,
+   "rate": 10.72
+  },
+  "ms-MY-OsmanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.042,
+   "langProb": 0.998,
+   "lufs": -20.2,
+   "maxPause": 0.97,
+   "rate": 11.38
+  },
+  "mt-MT-GraceNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.109,
+   "langProb": 0.631,
+   "lufs": -24.1,
+   "maxPause": 1.15,
+   "rate": 12.11
+  },
+  "mt-MT-JosephNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.127,
+   "langProb": 0.857,
+   "lufs": -24.5,
+   "maxPause": 0.99,
+   "rate": 12.2
+  },
+  "my-MM-NilarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 1.0,
+   "langProb": 0.958,
+   "lufs": -18.8,
+   "maxPause": 0.0,
+   "rate": 12.97
+  },
+  "my-MM-ThihaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 1.0,
+   "langProb": 0.959,
+   "lufs": -22.6,
+   "maxPause": 0.0,
+   "rate": 15.62
+  },
+  "nb-NO-PernilleNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.013,
+   "langProb": 0.995,
+   "lufs": -22.0,
+   "maxPause": 1.13,
+   "rate": 12.22
+  },
+  "nb-NO-FinnNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.013,
+   "langProb": 0.995,
+   "lufs": -21.3,
+   "maxPause": 1.09,
+   "rate": 12.12
+  },
+  "ne-NP-HemkalaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.273,
+   "langProb": 0.608,
+   "lufs": -21.0,
+   "maxPause": 0.88,
+   "rate": 9.59
+  },
+  "ne-NP-SagarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.273,
+   "langProb": 0.888,
+   "lufs": -22.8,
+   "maxPause": 0.91,
+   "rate": 10.19
+  },
+  "nl-BE-DenaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.061,
+   "langProb": 1.0,
+   "lufs": -17.7,
+   "maxPause": 0.9,
+   "rate": 12.66
+  },
+  "nl-BE-ArnaudNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 0.999,
+   "lufs": -21.1,
+   "maxPause": 1.03,
+   "rate": 12.29
+  },
+  "nl-NL-ColetteNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 1.0,
+   "lufs": -20.4,
+   "maxPause": 1.0,
+   "rate": 10.69
+  },
+  "nl-NL-FennaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 0.999,
+   "lufs": -18.2,
+   "maxPause": 0.95,
+   "rate": 11.55
+  },
+  "nl-NL-MaartenNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.048,
+   "langProb": 1.0,
+   "lufs": -18.6,
+   "maxPause": 1.03,
+   "rate": 12.05
+  },
+  "pl-PL-ZofiaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.067,
+   "langProb": 0.998,
+   "lufs": -21.7,
+   "maxPause": 0.86,
+   "rate": 11.37
+  },
+  "pl-PL-MarekNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.998,
+   "lufs": -19.5,
+   "maxPause": 1.06,
+   "rate": 11.77
+  },
+  "ps-AF-LatifaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.233,
+   "langProb": 0.471,
+   "lufs": -22.0,
+   "maxPause": 0.98,
+   "rate": 10.41
+  },
+  "ps-AF-GulNawazNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.227,
+   "langProb": 0.631,
+   "lufs": -22.0,
+   "maxPause": 0.98,
+   "rate": 10.59
+  },
+  "pt-BR-FranciscaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.045,
+   "langProb": 0.999,
+   "lufs": -18.5,
+   "maxPause": 0.3,
+   "rate": 12.72
+  },
+  "pt-BR-ThalitaMultilingualNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.019,
+   "langProb": 1.0,
+   "lufs": -22.0,
+   "maxPause": 0.37,
+   "rate": 12.84
+  },
+  "pt-BR-AntonioNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 1.0,
+   "lufs": -20.3,
+   "maxPause": 0.93,
+   "rate": 11.71
+  },
+  "pt-PT-RaquelNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -18.9,
+   "maxPause": 0.99,
+   "rate": 10.92
+  },
+  "pt-PT-DuarteNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -21.5,
+   "maxPause": 0.99,
+   "rate": 13.46
+  },
+  "ro-RO-AlinaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.006,
+   "langProb": 0.999,
+   "lufs": -20.9,
+   "maxPause": 0.98,
+   "rate": 11.38
+  },
+  "ro-RO-EmilNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.029,
+   "langProb": 1.0,
+   "lufs": -18.2,
+   "maxPause": 0.98,
+   "rate": 11.83
+  },
+  "ru-RU-SvetlanaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.037,
+   "langProb": 1.0,
+   "lufs": -20.4,
+   "maxPause": 1.02,
+   "rate": 10.9
+  },
+  "ru-RU-DmitryNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.037,
+   "langProb": 1.0,
+   "lufs": -19.4,
+   "maxPause": 1.14,
+   "rate": 10.66
+  },
+  "si-LK-ThiliniNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.742,
+   "langProb": 0.578,
+   "lufs": -21.5,
+   "maxPause": 0.9,
+   "rate": 10.81
+  },
+  "si-LK-SameeraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.933,
+   "langProb": 0.794,
+   "lufs": -20.4,
+   "maxPause": 0.91,
+   "rate": 11.89
+  },
+  "sk-SK-ViktoriaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.076,
+   "langProb": 0.993,
+   "lufs": -18.4,
+   "maxPause": 0.91,
+   "rate": 10.34
+  },
+  "sk-SK-LukasNeural": {
+   "status": "disabled",
+   "flags": [
+    "unreliable_synthesis"
+   ],
+   "cer": 0.069,
+   "langProb": 0.972,
+   "lufs": -19.0,
+   "maxPause": 0.97,
+   "rate": 11.07
+  },
+  "sl-SI-PetraNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.997,
+   "lufs": -17.7,
+   "maxPause": 0.98,
+   "rate": 12.03
+  },
+  "sl-SI-RokNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.999,
+   "lufs": -18.6,
+   "maxPause": 1.0,
+   "rate": 10.99
+  },
+  "so-SO-UbaxNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.112,
+   "langProb": 0.315,
+   "lufs": -22.9,
+   "maxPause": 0.98,
+   "rate": 11.7
+  },
+  "so-SO-MuuseNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.152,
+   "langProb": 0.609,
+   "lufs": -23.6,
+   "maxPause": 0.96,
+   "rate": 12.34
+  },
+  "sq-AL-AnilaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.095,
+   "langProb": 0.95,
+   "lufs": -20.9,
+   "maxPause": 0.9,
+   "rate": 11.32
+  },
+  "sq-AL-IlirNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.07,
+   "langProb": 0.983,
+   "lufs": -24.2,
+   "maxPause": 0.88,
+   "rate": 11.48
+  },
+  "sr-RS-SophieNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.988,
+   "lufs": -20.8,
+   "maxPause": 0.99,
+   "rate": 10.58
+  },
+  "sr-RS-NicholasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.982,
+   "lufs": -21.0,
+   "maxPause": 0.98,
+   "rate": 10.65
+  },
+  "su-ID-TutiNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.08,
+   "langProb": 0.611,
+   "lufs": -21.7,
+   "maxPause": 1.0,
+   "rate": 10.44
+  },
+  "su-ID-JajangNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.086,
+   "langProb": 0.861,
+   "lufs": -23.7,
+   "maxPause": 0.91,
+   "rate": 11.05
+  },
+  "sv-SE-SofieNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.996,
+   "lufs": -18.3,
+   "maxPause": 1.06,
+   "rate": 10.53
+  },
+  "sv-SE-MattiasNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.0,
+   "langProb": 0.999,
+   "lufs": -20.7,
+   "maxPause": 1.1,
+   "rate": 9.79
+  },
+  "sw-KE-ZuriNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.006,
+   "langProb": 0.967,
+   "lufs": -20.8,
+   "maxPause": 0.87,
+   "rate": 10.28
+  },
+  "sw-KE-RafikiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 0.961,
+   "lufs": -20.5,
+   "maxPause": 0.83,
+   "rate": 10.96
+  },
+  "sw-TZ-RehemaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.012,
+   "langProb": 0.98,
+   "lufs": -20.8,
+   "maxPause": 0.92,
+   "rate": 9.76
+  },
+  "sw-TZ-DaudiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.018,
+   "langProb": 0.976,
+   "lufs": -20.5,
+   "maxPause": 0.87,
+   "rate": 10.42
+  },
+  "ta-IN-PallaviNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.043,
+   "langProb": 0.955,
+   "lufs": -20.6,
+   "maxPause": 0.96,
+   "rate": 10.88
+  },
+  "ta-IN-ValluvarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.033,
+   "langProb": 0.899,
+   "lufs": -22.1,
+   "maxPause": 0.96,
+   "rate": 11.0
+  },
+  "ta-LK-SaranyaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.185,
+   "langProb": 0.968,
+   "lufs": -20.7,
+   "maxPause": 1.01,
+   "rate": 10.33
+  },
+  "ta-LK-KumarNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.028,
+   "langProb": 0.935,
+   "lufs": -22.1,
+   "maxPause": 1.01,
+   "rate": 10.46
+  },
+  "ta-MY-KaniNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.043,
+   "langProb": 0.961,
+   "lufs": -20.6,
+   "maxPause": 0.91,
+   "rate": 11.42
+  },
+  "ta-MY-SuryaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.033,
+   "langProb": 0.934,
+   "lufs": -22.1,
+   "maxPause": 1.01,
+   "rate": 10.46
+  },
+  "ta-SG-VenbaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.052,
+   "langProb": 0.962,
+   "lufs": -20.6,
+   "maxPause": 0.91,
+   "rate": 11.42
+  },
+  "ta-SG-AnbuNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.033,
+   "langProb": 0.927,
+   "lufs": -22.1,
+   "maxPause": 0.91,
+   "rate": 11.56
+  },
+  "te-IN-ShrutiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.503,
+   "langProb": 0.989,
+   "lufs": -20.8,
+   "maxPause": 0.98,
+   "rate": 10.3
+  },
+  "te-IN-MohanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.497,
+   "langProb": 0.989,
+   "lufs": -18.6,
+   "maxPause": 1.06,
+   "rate": 10.55
+  },
+  "th-TH-PremwadeeNeural": {
+   "status": "review",
+   "flags": [
+    "intermittent_synthesis"
+   ],
+   "cer": 0.025,
+   "langProb": 0.976,
+   "lufs": -18.0,
+   "maxPause": 0.0,
+   "rate": 16.84
+  },
+  "th-TH-NiwatNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.025,
+   "langProb": 0.975,
+   "lufs": -22.0,
+   "maxPause": 0.34,
+   "rate": 15.41
+  },
+  "tr-TR-EmelNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.033,
+   "langProb": 1.0,
+   "lufs": -19.0,
+   "maxPause": 1.31,
+   "rate": 11.17
+  },
+  "tr-TR-AhmetNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.033,
+   "langProb": 1.0,
+   "lufs": -17.0,
+   "maxPause": 1.39,
+   "rate": 10.52
+  },
+  "uk-UA-PolinaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.036,
+   "langProb": 0.991,
+   "lufs": -20.6,
+   "maxPause": 1.01,
+   "rate": 11.83
+  },
+  "uk-UA-OstapNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.036,
+   "langProb": 0.997,
+   "lufs": -20.7,
+   "maxPause": 0.97,
+   "rate": 11.38
+  },
+  "ur-IN-GulNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.972,
+   "lufs": -21.6,
+   "maxPause": 1.09,
+   "rate": 9.24
+  },
+  "ur-IN-SalmanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.014,
+   "langProb": 0.924,
+   "lufs": -20.1,
+   "maxPause": 1.14,
+   "rate": 9.3
+  },
+  "ur-PK-UzmaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.894,
+   "lufs": -22.0,
+   "maxPause": 0.99,
+   "rate": 10.28
+  },
+  "ur-PK-AsadNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.007,
+   "langProb": 0.818,
+   "lufs": -22.5,
+   "maxPause": 1.03,
+   "rate": 9.81
+  },
+  "uz-UZ-MadinaNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.275,
+   "langProb": 0.404,
+   "lufs": -22.0,
+   "maxPause": 0.98,
+   "rate": 11.47
+  },
+  "uz-UZ-SardorNeural": {
+   "status": "verified",
+   "flags": [
+    "detector_confused_language"
+   ],
+   "cer": 0.275,
+   "langProb": 0.463,
+   "lufs": -23.0,
+   "maxPause": 0.96,
+   "rate": 12.14
+  },
+  "vi-VN-HoaiMyNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.026,
+   "langProb": 1.0,
+   "lufs": -18.4,
+   "maxPause": 0.92,
+   "rate": 11.19
+  },
+  "vi-VN-NamMinhNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.026,
+   "langProb": 1.0,
+   "lufs": -20.0,
+   "maxPause": 1.0,
+   "rate": 11.1
+  },
+  "zh-CN-XiaoxiaoNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.996,
+   "lufs": -19.1,
+   "maxPause": 0.66,
+   "rate": 4.31
+  },
+  "zh-CN-XiaoyiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.99,
+   "lufs": -21.7,
+   "maxPause": 0.65,
+   "rate": 4.52
+  },
+  "zh-CN-YunjianNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.993,
+   "lufs": -23.4,
+   "maxPause": 0.65,
+   "rate": 4.34
+  },
+  "zh-CN-YunxiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.039,
+   "langProb": 0.992,
+   "lufs": -24.1,
+   "maxPause": 0.81,
+   "rate": 4.92
+  },
+  "zh-CN-YunxiaNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.995,
+   "lufs": -23.0,
+   "maxPause": 0.67,
+   "rate": 4.29
+  },
+  "zh-CN-YunyangNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.997,
+   "lufs": -27.2,
+   "maxPause": 0.72,
+   "rate": 4.69
+  },
+  "zh-CN-liaoning-XiaobeiNeural": {
+   "status": "verified",
+   "flags": [
+    "dialect_voice"
+   ],
+   "cer": 0.02,
+   "langProb": 0.992,
+   "lufs": -23.2,
+   "maxPause": 0.47,
+   "rate": 4.02
+  },
+  "zh-CN-shaanxi-XiaoniNeural": {
+   "status": "verified",
+   "flags": [
+    "dialect_voice"
+   ],
+   "cer": 0.431,
+   "langProb": 0.993,
+   "lufs": -20.3,
+   "maxPause": 0.68,
+   "rate": 4.27
+  },
+  "zh-HK-HiuGaaiNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.979,
+   "lufs": -19.2,
+   "maxPause": 0.87,
+   "rate": 3.22
+  },
+  "zh-HK-HiuMaanNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.968,
+   "lufs": -20.7,
+   "maxPause": 0.98,
+   "rate": 4.03
+  },
+  "zh-HK-WanLungNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.04,
+   "langProb": 0.964,
+   "lufs": -21.7,
+   "maxPause": 0.99,
+   "rate": 4.18
+  },
+  "zh-TW-HsiaoChenNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.995,
+   "lufs": -19.2,
+   "maxPause": 0.95,
+   "rate": 4.22
+  },
+  "zh-TW-HsiaoYuNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.99,
+   "lufs": -22.4,
+   "maxPause": 0.93,
+   "rate": 3.47
+  },
+  "zh-TW-YunJheNeural": {
+   "status": "verified",
+   "flags": [],
+   "cer": 0.02,
+   "langProb": 0.992,
+   "lufs": -22.8,
+   "maxPause": 1.24,
+   "rate": 4.6
+  },
+  "zu-ZA-ThandoNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -22.1,
+   "maxPause": 0.98,
+   "rate": 10.9
+  },
+  "zu-ZA-ThembaNeural": {
+   "status": "audio_only",
+   "flags": [],
+   "cer": null,
+   "langProb": null,
+   "lufs": -22.3,
+   "maxPause": 0.97,
+   "rate": 11.39
+  }
+ },
+ "multilingual": {
+  "de-DE-SeraphinaMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "de-DE-FlorianMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "en-AU-WilliamMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "en-US-AvaMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "en-US-EmmaMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "en-US-AndrewMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "en-US-BrianMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "fr-FR-VivienneMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "fr-FR-RemyMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "it-IT-GiuseppeMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "ko-KR-HyunsuMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ],
+  "pt-BR-ThalitaMultilingualNeural": [
+   "ar",
+   "de",
+   "es",
+   "fr",
+   "hi",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "ru",
+   "tr",
+   "zh"
+  ]
+ }
+}
