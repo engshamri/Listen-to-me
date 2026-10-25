@@ -32,11 +32,11 @@ test("footer and About credit the owner and link to Instagram and the source cod
   const footer = page.getByRole("contentinfo");
   await expect(footer).toContainText(`© ${new Date().getFullYear()} Yousif AL_Shamri. All rights reserved.`);
   await expect(footer.getByRole("link", { name: "@mmmmn" })).toHaveAttribute("href", "https://www.instagram.com/mmmmn/");
-  await expect(footer.getByRole("link", { name: "Source code" })).toHaveAttribute("href", "https://github.com/engshamri/asmani");
+  await expect(footer.getByRole("link", { name: "Source code" })).toHaveAttribute("href", "https://github.com/engshamri/Listen_to_me");
   await footer.getByRole("button", { name: "About", exact: true }).click();
   const about = page.getByRole("dialog", { name: "About Listen to me" });
   await expect(about).toContainText("Yousif AL_Shamri");
-  await expect(about.getByRole("link", { name: "Source code on GitHub" })).toHaveAttribute("href", "https://github.com/engshamri/asmani");
+  await expect(about.getByRole("link", { name: "Source code on GitHub" })).toHaveAttribute("href", "https://github.com/engshamri/Listen_to_me");
 });
 
 test("task order matches keyboard order: text → voice → settings → generate", async ({ page }) => {

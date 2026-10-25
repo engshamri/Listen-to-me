@@ -4,8 +4,6 @@
 
 من إنشاء وتطوير **يوسف الشمري (Yousif AL_Shamri)** · GitHub [@engshamri](https://github.com/engshamri) · إنستغرام [@mmmmn](https://www.instagram.com/mmmmn/)
 
-يحمل المستودع اسم `asmani`، وهو كتابة كلمة «اسمعني» بالحروف اللاتينية.
-
 > English: see [README.md](README.md).
 
 <p align="center"><img src="docs/screenshots/mobile-arabic.png" alt="واجهة اسمعني بالعربية على الهاتف" width="300"></p>
@@ -33,8 +31,8 @@
 افتح الطرفية (PowerShell أو موجه الأوامر) في المجلد الذي تريد حفظ المشروع فيه، واكتب:
 
 ```bash
-git clone https://github.com/engshamri/asmani.git
-cd asmani
+git clone https://github.com/engshamri/Listen_to_me.git
+cd Listen_to_me
 python server.py
 ```
 
@@ -122,7 +120,7 @@ npm start            # http://localhost:3000
 
 ## الدعم والتواصل
 
-- للإبلاغ عن مشكلة أو طرح سؤال: [GitHub Issues](https://github.com/engshamri/asmani/issues)
+- للإبلاغ عن مشكلة أو طرح سؤال: [GitHub Issues](https://github.com/engshamri/Listen_to_me/issues)
 - المطوّر: يوسف الشمري (Yousif AL_Shamri) · GitHub [@engshamri](https://github.com/engshamri) · إنستغرام [@mmmmn](https://www.instagram.com/mmmmn/)
 
 ## الحقوق

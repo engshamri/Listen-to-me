@@ -1,5 +1,5 @@
 {
-  "name": "asmani",
+  "name": "listen-to-me",
   "version": "1.0.0",
   "private": true,
   "description": "Listen to me (اسمعني) — multilingual text-to-speech and translation platform",
@@ -13,13 +13,13 @@
     "edge-tts",
     "nextjs"
   ],
-  "homepage": "https://github.com/engshamri/asmani#readme",
+  "homepage": "https://github.com/engshamri/Listen_to_me#readme",
   "bugs": {
-    "url": "https://github.com/engshamri/asmani/issues"
+    "url": "https://github.com/engshamri/Listen_to_me/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/engshamri/asmani.git"
+    "url": "git+https://github.com/engshamri/Listen_to_me.git"
   },
   "author": "Yousif AL_Shamri (https://github.com/engshamri)",
   "license": "UNLICENSED",

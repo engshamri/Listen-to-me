@@ -4,7 +4,7 @@
 
 Created and maintained by **Yousif AL_Shamri** · GitHub [@engshamri](https://github.com/engshamri) · Instagram [@mmmmn](https://www.instagram.com/mmmmn/)
 
-The Arabic name اسمعني (*Asma'ni*) means “listen to me”; its transliteration gives the repository its name, `asmani`.
+The Arabic name اسمعني (*Asma'ni*) means “listen to me”.
 
 > العربية: راجع [README-AR.md](README-AR.md) لدليل التشغيل الكامل باللغة العربية.
 
@@ -50,8 +50,8 @@ Working and tested locally on Windows 11 (see [Testing](#testing)). It is design
 **Requirements:** [Node.js 20.9+](https://nodejs.org) and [Python 3.9+](https://www.python.org/downloads/). Optional: [ffmpeg](https://ffmpeg.org) for M4A/MP4 export. Internet access is needed while generating speech or translating (OCR and PDF/TXT import work offline).
 
 ```bash
-git clone https://github.com/engshamri/asmani.git
-cd asmani
+git clone https://github.com/engshamri/Listen_to_me.git
+cd Listen_to_me
 python server.py
 ```
 
@@ -188,7 +188,7 @@ Automated tests cannot judge how natural a voice sounds; docs/TESTING.md include
 
 ## Support and contact
 
-- Bug reports and questions: [GitHub Issues](https://github.com/engshamri/asmani/issues)
+- Bug reports and questions: [GitHub Issues](https://github.com/engshamri/Listen_to_me/issues)
 - Maintainer: Yousif AL_Shamri ([@engshamri](https://github.com/engshamri) on GitHub, [@mmmmn](https://www.instagram.com/mmmmn/) on Instagram)
 
 ## License
