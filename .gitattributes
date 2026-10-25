@@ -1,0 +1,5 @@
+# Store text files with LF line endings, whatever the editor or OS wrote.
+* text=auto eol=lf
+
+# Windows batch files need CRLF.
+*.bat text eol=crlf
