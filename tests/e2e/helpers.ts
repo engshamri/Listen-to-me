@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 
 export const editor = (page: Page) => page.getByRole("textbox", { name: "Text to read aloud" });
@@ -45,3 +47,18 @@ export async function noHorizontalOverflow(page: Page) {
 }
 
 export const LIVE = !process.env.OFFLINE;
+
+/** A real 6-second MP3 (silence), for tests that stub the speech API. */
+export const FIXTURE_AUDIO = readFileSync(join(__dirname, "..", "fixtures", "silence-6s.mp3"));
+
+/** Answers /api/tts like the server does with word timings: multipart audio + words ([text, start] pairs, 0.3 s each). */
+export async function stubSpeech(page: Page, words: [string, number][]) {
+  const boundary = "readalongboundary";
+  const json = JSON.stringify(words.map(([text, start]) => ({ text, start, end: start + 0.3 })));
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="speech.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n`),
+    FIXTURE_AUDIO,
+    Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="words"\r\n\r\n${json}\r\n--${boundary}--\r\n`),
+  ]);
+  await page.route("**/api/tts", (route) => route.fulfill({ status: 200, headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` }, body }));
+}

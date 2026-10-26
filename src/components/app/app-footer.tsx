@@ -1,6 +1,6 @@
 "use client";
 
-import { CodeXml, HandHeart, Instagram } from "lucide-react";
+import { CodeXml, HandHeart, Instagram, Library } from "lucide-react";
 import Link from "next/link";
 import type { AboutSection } from "./about-dialog";
 import { useI18n } from "@/lib/i18n/provider";
@@ -22,6 +22,10 @@ export function AppFooter({ year, onAbout }: { year: number; onAbout: (section?:
           <button type="button" className="hover:text-foreground underline-offset-4 hover:underline" onClick={() => onAbout("privacy")}>
             {t("footer.privacy")}
           </button>
+          <Link href="/library" className="hover:text-foreground inline-flex items-center gap-1.5 underline-offset-4 hover:underline">
+            <Library className="size-4" aria-hidden />
+            {t("footer.library")}
+          </Link>
           <Link href="/support" className="hover:text-foreground inline-flex items-center gap-1.5 underline-offset-4 hover:underline">
             <HandHeart className="size-4" aria-hidden />
             {t("footer.support")}

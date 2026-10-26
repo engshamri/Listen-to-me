@@ -23,11 +23,13 @@ src/
     layout.tsx               Reads locale/theme cookies → <html lang dir data-theme> (no flash)
     page.tsx                 Renders <Studio/>
     support/page.tsx         Donation page (localized metadata) → components/support
+    library/page.tsx         My library (not indexed) → components/library
     globals.css, themes.css  Design tokens; one block per theme
     api/tts|preview|translate|convert|health/route.ts
   components/
     app/                     Header (language, theme, about), footer, About dialog, logo
     studio/                  The work area (one component per section, see below)
+    library/                 Library page, player (reading mode + resume), "Continue listening", hooks
     ui/                      Accessible primitives (Radix-based), token-styled, RTL-aware
   lib/
     i18n/                    Typed dictionaries (en, ar), plural rules, formatters, provider
@@ -35,6 +37,7 @@ src/
     text/                    Chunking, statistics, search normalization, clean-up, line splitting,
                              word alignment for read-along (align.ts)
     files/                   TXT decoding, PDF extraction, OCR of scanned pages, limits
+    library/store.ts         Saved recordings in IndexedDB (no dependency), change notifications
     voices/                  Catalog access/filters, language categories, favorites store,
                              audit verdicts (quality.ts), preview samples, backup-voice mapping
     tts/engine.ts            Client generation engine (concurrency, retry, resume, cancel)
@@ -137,6 +140,22 @@ Nothing in the request path needs Python or a writable project folder. With `VER
 | Path traversal | Preview cache file names come from catalog ids matching `[\w-]+` |
 | Non-audio uploads | `/api/convert` checks for MP3 frame sync / ID3 before ffmpeg |
 | Headers | nosniff, frame-deny, referrer policy, permissions policy, COOP, no `X-Powered-By` |
+
+## Library
+
+Saved recordings live in the browser's IndexedDB (database `asmani-library`), never on the server. `lib/library/store.ts` is a small promise wrapper over three object stores keyed by the item id, so the list loads without text or audio:
+
+| Store | Holds |
+|---|---|
+| `items` | Title, a short excerpt, voice and settings, duration and size, listening position, bookmarks |
+| `content` | The read-along timeline (text, sentence and word times) |
+| `audio` | The MP3 blob |
+
+- Every write runs in one transaction and then notifies listeners in this tab and, through a `BroadcastChannel`, in other tabs. `useLibraryItems` re-reads the list on each change.
+- Saving is explicit ("Save to library") or automatic (`autoSave` setting). The first save asks for persistent storage (`navigator.storage.persist()`), so the browser is less likely to evict it. A full disk shows a clear message (`QuotaExceededError` → `QUOTA`).
+- `LibraryPlayer` loads a recording, plays it in the reading mode with a hidden `<audio>` element, and starts from the saved position. `useSavePosition` writes the position every 5 s while playing and on pause, seek, end and page hide. A result in the studio does the same once it is saved.
+- The main page shows "Continue listening" for the most recent recording that was started but not finished.
+- `tests/unit/library.test.ts` runs the store against `fake-indexeddb` (a development dependency only).
 
 ## Favorites
 

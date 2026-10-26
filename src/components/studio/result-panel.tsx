@@ -1,17 +1,19 @@
 "use client";
 
-import { Captions, Download, Film, Loader2, Maximize2, Music, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { Captions, Check, Download, Film, Library, Loader2, Maximize2, Music, Play, RotateCcw, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PLAYBACK_RATES, useSpeechSettings } from "./hooks";
 import { Notice, Panel, StepHeading } from "./primitives";
 import { ReadAlong } from "./read-along";
 import { ReadingMode } from "./reading-mode";
+import { libraryErrorKey, saveResult, useSavePosition } from "@/components/library/library-hooks";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { downloadName } from "@/lib/audio/filename";
 import { subtitleCues, toSrt, toVtt } from "@/lib/audio/subtitles";
-import { registerExclusivePlayer } from "@/lib/audio/playback";
+import { registerExclusivePlayer, setListeningSpeed } from "@/lib/audio/playback";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import type { Timeline } from "@/lib/tts/timeline";
@@ -35,6 +37,8 @@ export interface AudioResult {
   conversions: Partial<Record<ConvertFormat, { url: string; size: number }>>;
   /** What is spoken when, for read-along and subtitles. */
   timeline: Timeline;
+  /** Set once the result is saved to the library. */
+  libraryId?: string;
 }
 
 interface ResultPanelProps {
@@ -45,11 +49,12 @@ interface ResultPanelProps {
   onOpen: (id: string) => void;
   onRemove: (id: string) => void;
   onConverted: (id: string, format: ConvertFormat, blob: Blob) => void;
+  onSaved: (id: string, libraryId: string) => void;
   className?: string;
 }
 
 export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function ResultPanel(
-  { result, history, converterAvailable, convertMaxBytes, onOpen, onRemove, onConverted, className },
+  { result, history, converterAvailable, convertMaxBytes, onOpen, onRemove, onConverted, onSaved, className },
   ref,
 ) {
   const { t, locale, fmt } = useI18n();
@@ -63,6 +68,7 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
   const [settings, setSettings] = useSpeechSettings();
   const [readingOpen, setReadingOpen] = useState(false);
   const [converting, setConverting] = useState<{ format: ConvertFormat; ctrl: AbortController } | null>(null);
+  const [saving, setSaving] = useState(false);
   const voice = getVoice(result.voiceId);
 
   useEffect(() => {
@@ -71,12 +77,24 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
 
   // Listening speed changes playback only; the generated audio stays as it is.
   useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    el.defaultPlaybackRate = settings.playbackRate;
-    el.playbackRate = settings.playbackRate;
-    el.preservesPitch = true;
+    if (audioRef.current) setListeningSpeed(audioRef.current, settings.playbackRate);
   }, [audioEl, settings.playbackRate, result.url]);
+
+  // Once saved, the library remembers where the listener stopped.
+  useSavePosition(audioEl, result.libraryId);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const item = await saveResult(result);
+      onSaved(result.id, item.id);
+      toast.success(t("library.savedToast"));
+    } catch (e) {
+      toast.error(t(libraryErrorKey(e)));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function downloadSubtitles(kind: "srt" | "vtt") {
     const cues = subtitleCues(result.timeline);
@@ -247,13 +265,29 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
         ))}
       </dl>
 
-      <div className="flex flex-wrap gap-2 border-t pt-4">
+      <div className="flex flex-wrap items-center gap-2 border-t pt-4">
         <Button asChild size="lg" className="font-semibold">
           <a href={result.url} download={fileBase("mp3")}>
             <Download className="size-5" aria-hidden />
             {t("result.downloadMp3")}
           </a>
         </Button>
+        {result.libraryId ? (
+          <>
+            <span role="status" className="text-success flex items-center gap-1.5 px-2 text-sm font-medium">
+              <Check className="size-4" aria-hidden />
+              {t("library.saved")}
+            </span>
+            <Button asChild variant="link" className="px-1">
+              <Link href="/library">{t("library.open")}</Link>
+            </Button>
+          </>
+        ) : (
+          <Button size="lg" variant="outline" onClick={() => void save()} disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" aria-hidden /> : <Library aria-hidden />}
+            {saving ? t("library.saving") : t("library.save")}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">

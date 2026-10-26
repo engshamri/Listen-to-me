@@ -42,6 +42,7 @@ Working and tested on Windows 11 (see [Testing](#testing)). Run it on your own c
 | **Speech** | Language-aware sentence splitting (never cuts a word) · paragraph-aware chunking · pauses after headings · speed and pitch · 3 parts in parallel with ordered assembly · retries with back-off · resume from a failed part without regenerating finished parts · real cancellation (the server kills the synthesis process) |
 | **Voice consistency** | No silent fallback. If the speech service fails, you choose: retry, keep the finished parts, or explicitly accept a backup voice; any part read by it is listed with the result |
 | **Read-along** | While the audio plays, the sentence being read sits in a box, the word being spoken is highlighted, text already read turns dark and text still to come stays grey, so you always know where the voice is · word timings come from Microsoft's speech service itself (estimated, and marked as approximate, only for parts read by the backup voice) · click any sentence to play from there · the text follows the voice and pauses following while you scroll · **full-screen reading mode** with adjustable large text, previous/next sentence, a seek bar and keyboard control (Space, ← →, Esc) · listening speed 0.75×–2× without regenerating · **SRT and WebVTT subtitles** · Arabic right-to-left |
+| **My library** | Save a recording with its text and read-along timings, or turn on automatic saving · kept **only in your browser** (IndexedDB), never uploaded · search by title (tolerant of Arabic spelling variants), rename, delete with confirmation · export the audio (MP3), the text (TXT) or subtitles (SRT) · listening opens the full-screen reading mode · **remembers where you stopped**: progress on each recording, and a “Continue listening” card on the main page |
 | **Results** | One controlled player (never two sounds at once, no autoplay) · exact duration from the MP3 frames · size, voice, speed, pitch, status · MP3 download · M4A (audio-only AAC) and **MP4 video** (H.264 still cover + audio) on demand · descriptive, timestamped file names · session history (kept only in the tab) |
 | **Interface** | English (default) and Arabic with full RTL · 18 themes (10 light, 8 dark) + System in a gallery of live previews; saved and server-rendered (no flash) · WCAG 2.2 AA contrast verified for every theme · responsive layout with a sticky Generate bar on phones · reduced-motion support |
 | **Security** | Input validation (zod) · body-size caps · rate limits · cross-site request protection · concurrency caps for speech sessions and ffmpeg · no shell execution · private temp directories deleted after each request · security headers |
@@ -160,8 +161,8 @@ All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
-| `npm test` (unit, incl. the speech client against a mock service, read-along alignment and the donation address/QR checks) | 160 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, OCR) | 72 passed |
+| `npm test` (unit, incl. the speech client against a mock service, read-along alignment, the library store and the donation address/QR checks) | 172 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, library, OCR) | 80 passed |
 | `npm run test:live` (API against a running server, real speech/translation/ffmpeg, word timings) | 26 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |
@@ -176,7 +177,7 @@ A GitHub Actions workflow (`.github/workflows/production-check.yml`) runs a shor
 - To create audio, text is sent to Microsoft's Edge text-to-speech service; translation sends text to Google Translate (or your LibreTranslate server). The interface says so next to the Generate button and in **About → Privacy**.
 - TXT and PDF files are read in the browser and never uploaded. OCR also runs in the browser.
 - The server keeps no copies of text or audio: each request uses a private temporary folder that is deleted when it finishes. Only voice previews (fixed sample sentences) are cached.
-- Drafts, settings, theme and language live in your browser (local storage / cookies).
+- Drafts, settings, theme and language live in your browser (local storage / cookies). Recordings you save to **My library** are stored in your browser's IndexedDB; clearing the site's data in the browser deletes them.
 
 ## Security notes
 

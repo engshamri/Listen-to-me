@@ -16,3 +16,10 @@ export function registerExclusivePlayer(el: HTMLMediaElement): () => void {
     el.removeEventListener("play", onPlay);
   };
 }
+
+/** Listening speed: changes playback only, keeping the voice's pitch. */
+export function setListeningSpeed(el: HTMLMediaElement, rate: number) {
+  el.defaultPlaybackRate = rate;
+  el.playbackRate = rate;
+  el.preservesPitch = true;
+}

@@ -43,6 +43,7 @@ export function ReadingMode({
   audio,
   timeline,
   duration,
+  title,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,6 +51,8 @@ export function ReadingMode({
   timeline: Timeline;
   /** Exact length from the MP3 frames (browsers may report Infinity for joined MP3). */
   duration: number;
+  /** Shown instead of "Read along", e.g. a saved recording's title. */
+  title?: string;
 }) {
   const { t, fmt } = useI18n();
   const [settings, setSettings] = useSpeechSettings();
@@ -89,7 +92,9 @@ export function ReadingMode({
       >
         <div className="flex items-center gap-2 border-b px-4 py-3 pe-14 sm:px-6 sm:pe-16">
           <div className="min-w-0 flex-1">
-            <DialogTitle>{t("readAlong.title")}</DialogTitle>
+            <DialogTitle className="truncate" dir="auto">
+              {title ?? t("readAlong.title")}
+            </DialogTitle>
             <DialogDescription className="mt-0.5 hidden text-[13px] sm:block">{t("readAlong.keys")}</DialogDescription>
           </div>
           <Button

@@ -33,12 +33,14 @@ export interface SpeechSettings {
   playbackRate: number;
   /** Text size step in the full-screen reading mode. */
   readingSize: number;
+  /** Save every new recording to the library. */
+  autoSave: boolean;
 }
 
 export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 export const READING_SIZES = [18, 21, 24, 28, 32] as const;
 
-export const DEFAULT_SETTINGS: SpeechSettings = { voiceId: DEFAULT_VOICE_ID, speed: 1, pitch: 0, pauses: true, readAlong: true, playbackRate: 1, readingSize: 1 };
+export const DEFAULT_SETTINGS: SpeechSettings = { voiceId: DEFAULT_VOICE_ID, speed: 1, pitch: 0, pauses: true, readAlong: true, playbackRate: 1, readingSize: 1, autoSave: false };
 
 function clamp(n: unknown, min: number, max: number, fallback: number): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
@@ -59,6 +61,7 @@ function loadSettings(): SpeechSettings {
     readAlong: typeof saved?.readAlong === "boolean" ? saved.readAlong : true,
     playbackRate: PLAYBACK_RATES.includes(saved?.playbackRate as (typeof PLAYBACK_RATES)[number]) ? saved!.playbackRate! : 1,
     readingSize: Math.round(clamp(saved?.readingSize, 0, READING_SIZES.length - 1, 1)),
+    autoSave: saved?.autoSave === true,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { HandHeart, Info, Languages } from "lucide-react";
+import { HandHeart, Info, Languages, Library } from "lucide-react";
 import Link from "next/link";
 import { LogoMark } from "./logo";
 import { ThemeGallery } from "./theme-gallery";
@@ -30,6 +30,15 @@ export function AppHeader({ onAbout }: { onAbout: () => void }) {
         </Link>
 
         <div className="ms-auto flex items-center gap-1">
+          <Button asChild variant="ghost" size="sm" className="gap-1.5 max-sm:size-8 max-sm:px-0">
+            <Link href="/library" aria-label={t("header.library")}>
+              <Library aria-hidden />
+              <span className="hidden sm:inline" aria-hidden>
+                {t("header.library")}
+              </span>
+            </Link>
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1.5" aria-label={`${t("header.language")}: ${LOCALE_LABEL[locale]}`}>

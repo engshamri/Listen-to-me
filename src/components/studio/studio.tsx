@@ -10,6 +10,8 @@ import { SettingsPanel } from "./settings-panel";
 import { TextPanel } from "./text-panel";
 import { EMPTY_BROWSER_FILTERS, VoiceBrowser, navForVoice, type BrowserFilters, type BrowserNav } from "./voice-browser";
 import { VoicePanel } from "./voice-panel";
+import { ContinueListening } from "@/components/library/continue-listening";
+import { libraryErrorKey, saveResult } from "@/components/library/library-hooks";
 import { mp3DurationSeconds } from "@/lib/audio/mp3";
 import { MAX_TEXT_CHARS } from "@/lib/files/limits";
 import { useI18n } from "@/lib/i18n/provider";
@@ -53,6 +55,7 @@ function StudioInner() {
   const [text, setText] = useState("");
   const textRef = useLatest(text);
   const [settings, updateSettings] = useSpeechSettings();
+  const settingsRef = useLatest(settings);
   const voice = getVoice(settings.voiceId) ?? getVoice(DEFAULT_VOICE_ID) ?? VOICES[0];
   const health = useHealth();
   // The browser keeps its place (and filters) between openings.
@@ -148,12 +151,18 @@ function StudioInner() {
         return next.slice(0, MAX_RESULTS);
       });
       setCurrentId(result.id);
+      if (settingsRef.current.autoSave) {
+        saveResult(result).then(
+          (item) => setResults((prev) => prev.map((r) => (r.id === result.id ? { ...r, libraryId: item.id } : r))),
+          (e: unknown) => toast.error(t(libraryErrorKey(e))),
+        );
+      }
       activeRef.current = null;
       setGen({ phase: "idle" });
       scrollToResult.current = true;
       toast.success(t("generate.success"));
     },
-    [t],
+    [t, settingsRef],
   );
 
   // Bring a new result into view and move focus to its heading (announced by screen readers).
@@ -233,6 +242,8 @@ function StudioInner() {
         <p className="text-muted-foreground mt-1 text-[15px] leading-relaxed">{t("page.subtitle", { languages: VOICE_LANGUAGES.length })}</p>
       </div>
 
+      <ContinueListening />
+
       {/*
         DOM order = task order (text → voice → settings → generate → result), so
         keyboard, screen-reader and visual order agree. On large screens the
@@ -295,6 +306,7 @@ function StudioInner() {
                 return prev.filter((r) => r.id !== id);
               })
             }
+            onSaved={(id, libraryId) => setResults((prev) => prev.map((r) => (r.id === id ? { ...r, libraryId } : r)))}
             onConverted={(id, format: ConvertFormat, blob) =>
               setResults((prev) =>
                 prev.map((r) => (r.id === id ? { ...r, conversions: { ...r.conversions, [format]: { url: URL.createObjectURL(blob), size: blob.size } } } : r)),

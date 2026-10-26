@@ -55,6 +55,8 @@ export interface Formatters {
   /** "2:05" */
   clock: (seconds: number) => string;
   time: (d: Date) => string;
+  /** "Oct 26, 2026" */
+  date: (d: Date) => string;
 }
 
 export function createFormatters(locale: Locale, t: Translator): Formatters {
@@ -84,5 +86,6 @@ export function createFormatters(locale: Locale, t: Translator): Formatters {
       return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
     },
     time: (d) => new Intl.DateTimeFormat(nl, { hour: "numeric", minute: "2-digit" }).format(d),
+    date: (d) => new Intl.DateTimeFormat(nl, { dateStyle: "medium" }).format(d),
   };
 }

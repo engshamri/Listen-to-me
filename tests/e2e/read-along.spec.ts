@@ -1,15 +1,13 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { editor, generateButton, noHorizontalOverflow, openFresh } from "./helpers";
+import { editor, generateButton, noHorizontalOverflow, openFresh, stubSpeech } from "./helpers";
 
 /*
  * Read-along with a stubbed speech API: a real 6-second MP3 plus word timings,
  * so highlighting can be checked at exact moments.
  */
 
-const AUDIO = readFileSync(join(__dirname, "..", "fixtures", "silence-6s.mp3"));
 const EN_TEXT = "First sentence is here. Second one follows now. Third and last.";
 const EN_WORDS: [string, number][] = [
   ["First", 0.2], ["sentence", 0.6], ["is", 1.0], ["here", 1.2],
@@ -18,17 +16,6 @@ const EN_WORDS: [string, number][] = [
 ];
 const AR_TEXT = "مرحباً بكم في اسمعني. هذا اختبار للقراءة المتزامنة.";
 const AR_WORDS: [string, number][] = [["مرحباً", 0.2], ["بكم", 0.8], ["في", 1.2], ["اسمعني", 1.5], ["هذا", 2.6], ["اختبار", 3.0], ["للقراءة", 3.6], ["المتزامنة", 4.2]];
-
-async function stubSpeech(page: Page, words: [string, number][]) {
-  const boundary = "readalongboundary";
-  const json = JSON.stringify(words.map(([text, start]) => ({ text, start, end: start + 0.3 })));
-  const body = Buffer.concat([
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="speech.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n`),
-    AUDIO,
-    Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="words"\r\n\r\n${json}\r\n--${boundary}--\r\n`),
-  ]);
-  await page.route("**/api/tts", (route) => route.fulfill({ status: 200, headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` }, body }));
-}
 
 async function generate(page: Page, text: string) {
   await editor(page).fill(text);
