@@ -10,6 +10,7 @@ scripts/
   save_voices.py             Refresh src/data/voices.json from the live provider list (Python, edge-tts)
   build-voice-catalog.mjs    Enrich voices (localized names, regions, flags) → voice-catalog.json
   generate-brand-assets.mjs  Favicon, social image, MP4 video cover
+  generate-donation-qr.mjs   QR codes for /support (public/donate/*.svg and *.png) from donations.json
   copy-vendor-assets.mjs     Copies the pdf.js worker and the OCR engine (tesseract.js worker,
                              WebAssembly cores, Arabic/English data) into public/ (git-ignored)
   live-check.mjs             End-to-end API checks against a running server
@@ -21,6 +22,7 @@ src/
   app/
     layout.tsx               Reads locale/theme cookies → <html lang dir data-theme> (no flash)
     page.tsx                 Renders <Studio/>
+    support/page.tsx         Donation page (localized metadata) → components/support
     globals.css, themes.css  Design tokens; one block per theme
     api/tts|preview|translate|convert|health/route.ts
   components/
@@ -44,6 +46,7 @@ src/
     voices.json              Raw provider voice list (322 voices)
     voice-catalog.json       Generated, enriched catalog used by client and server
     voice-quality.json       Audit verdicts per voice + verified multilingual languages
+    donations.json           Donation addresses: single source for the page, QR codes and tests
 tests/
   unit/                      Vitest: text, files, i18n/catalog, engine, server utilities, themes
   e2e/                       Playwright + axe: layout, i18n/themes, voices, files, generation, a11y
@@ -87,6 +90,15 @@ When Microsoft ships a new Edge version the token scheme can change; `CHROMIUM_F
 ## Running on Vercel
 
 Nothing in the request path needs Python or a writable project folder. With `VERCEL=1` the server trusts Vercel's forwarding headers, caches previews in the temp folder, uses the production domain for social links, and caps `/api/convert` uploads at 4,000,000 bytes (Vercel rejects request bodies over 4.5 MB). Conversions stream their response, which Vercel does not cap. `next.config.ts` keeps `ws` and `ffmpeg-static` as external packages and traces the ffmpeg binary and the video cover into the convert function. Routes declare `maxDuration` (speech and conversion 300 s, previews and translation 60 s); preview responses carry `s-maxage` so Vercel's CDN serves repeat requests.
+
+## Support page
+
+`/support` lists two optional donation methods from `src/data/donations.json`: USDT on Tron (TRC20) and BTC on X Layer, received as xBTC (OKX Wrapped BTC, contract `0xb7c00000bcdeef966b20b3d884b98e64d2b06b4f` on X Layer, chain ID 196). Each card shows the asset, the network and a wrong-network warning before the QR code and the address. The X Layer address is shown in the universal `0x` form, with OKX Wallet's `XKO` display of the same address underneath.
+
+- The page is static: no wallet connection, no payment processing, no tracking, nothing stored. Copy uses `navigator.clipboard`; if the browser refuses, the address is selected for a manual copy and the visitor is told so.
+- QR codes are generated once by `scripts/generate-donation-qr.mjs` (the `qrcode` package, a development dependency) as black-on-white SVG for display and a 1024 px PNG for download. The tile stays white in dark themes because scanners read inverted codes poorly.
+- `tests/unit/donations.test.ts` pins the addresses, checks the Tron base58check checksum and the EIP-55 checksum of the X Layer address, checks that the XKO and 0x forms match, decodes every QR file with jsQR, and validates `.github/FUNDING.yml`.
+- Entry points: a heart icon in the header, a footer link and a section in the About dialog. `.github/FUNDING.yml` points GitHub's Sponsor button at the page.
 
 ## PDF import and OCR
 

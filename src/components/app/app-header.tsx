@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Languages } from "lucide-react";
+import { HandHeart, Info, Languages } from "lucide-react";
 import Link from "next/link";
 import { LogoMark } from "./logo";
 import { ThemeGallery } from "./theme-gallery";
@@ -50,6 +50,17 @@ export function AppHeader({ onAbout }: { onAbout: () => void }) {
           </DropdownMenu>
 
           <ThemeGallery />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild variant="ghost" size="icon-sm">
+                <Link href="/support" aria-label={t("header.support")}>
+                  <HandHeart aria-hidden />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t("header.support")}</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>

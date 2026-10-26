@@ -75,6 +75,19 @@ test("About dialog has no violations (English and Arabic)", async ({ page }) => 
   }
 });
 
+test("support page has no violations (English, Arabic in a dark theme, FAQ open)", async ({ page }) => {
+  await openFresh(page);
+  await page.goto("/support");
+  await page.getByText("How do I donate safely?").click();
+  await scan(page, "en/support");
+  await page.context().addCookies([
+    { name: "locale", value: "ar", url: "http://127.0.0.1" },
+    { name: "theme", value: "midnight", url: "http://127.0.0.1" },
+  ]);
+  await page.goto("/support");
+  await scan(page, "ar/midnight/support");
+});
+
 test("theme gallery has no violations", async ({ page }) => {
   await openFresh(page);
   await page.getByRole("button", { name: "Theme" }).click();

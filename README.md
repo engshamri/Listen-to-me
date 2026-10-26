@@ -2,7 +2,7 @@
 
 **Multilingual text-to-speech and translation, running on your own computer.** Type, paste or upload text (TXT, PDF, or scanned PDF through built-in OCR), translate it if you like, pick one of 322 neural voices in 75 languages, and download natural-sounding speech as MP3, M4A, or a real MP4 video.
 
-Created and maintained by **Yousif AL_Shamri** · GitHub [@engshamri](https://github.com/engshamri) · Instagram [@mmmmn](https://www.instagram.com/mmmmn/)
+Created and maintained by **Yousif AL_Shamri** · GitHub [@engshamri](https://github.com/engshamri) · Instagram [@mmmmn](https://www.instagram.com/mmmmn/) · [Support the project](#support-the-project)
 
 The Arabic name اسمعني (*Asma'ni*) means “listen to me”.
 
@@ -130,6 +130,7 @@ Things to know for a public demo: rate limits are kept in memory per function in
 | `npm run voices:refresh` | Re-download the provider's voice list and rebuild the catalog (needs `python -m pip install -r requirements.txt`) |
 | `scripts/voice-qa/run_audit.py` | Voice quality audit (see docs/VOICE-QUALITY.md; needs its own venv: `pip install -r scripts/voice-qa/requirements.txt`, a GPU recommended) |
 | `node scripts/generate-brand-assets.mjs` | Regenerate favicon, social image and video cover |
+| `node scripts/generate-donation-qr.mjs` | Regenerate the donation QR codes from `src/data/donations.json` (then run `npm test`, which decodes them) |
 
 ## Architecture (short)
 
@@ -157,8 +158,8 @@ All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
-| `npm test` (unit, incl. the speech client against a mock service) | 138 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 52 passed |
+| `npm test` (unit, incl. the speech client against a mock service and the donation address/QR checks) | 146 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 61 passed |
 | `npm run test:live` (API against a running server, real speech/translation/ffmpeg) | 25 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |
@@ -210,7 +211,20 @@ Automated tests cannot judge how natural a voice sounds; docs/TESTING.md include
 | API calls return 403 behind a reverse proxy | Set `TRUST_PROXY=true` so the public host name from `X-Forwarded-Host` is used |
 | PowerShell blocks `run.ps1` | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, or just run `python server.py` |
 
-## Support and contact
+## Support the project
+
+Listen to me is free, with no ads and no sign-up. Donations are optional and help pay for development, for maintenance when the speech and translation services change, and for hosting. They are direct wallet transfers: the website doesn't process payments, never asks for private keys or seed phrases, and never connects to a wallet.
+
+**Donation page:** <https://listen-to-me-shamri.vercel.app/support> (addresses, QR codes and step-by-step help, in English and Arabic)
+
+| Asset | Network | Receiving address |
+|---|---|---|
+| USDT (Tether) | Tron (TRC20) | `TLXRM9ZjDxtk6uEuMiKe3Ek8sHC8SQR845` |
+| BTC, received as xBTC (OKX Wrapped BTC) | X Layer (by OKX) | `0x63223abFd548A93b04975b217E2f007be0cf4CFA`<br>OKX Wallet's XKO format of the same address: `XKO63223abFd548A93b04975b217E2f007be0cf4CFA` |
+
+> **Use exactly the network shown.** USDT sent on any network other than Tron (TRC20), or BTC sent on the Bitcoin network or any network other than X Layer, will not arrive and can't be recovered. The BTC address is an X Layer address, **not** a Bitcoin address: from OKX, withdraw BTC and choose the X Layer network (it arrives as xBTC).
+
+## Contact
 
 - Bug reports and questions: [GitHub Issues](https://github.com/engshamri/Listen_to_me/issues)
 - Maintainer: Yousif AL_Shamri ([@engshamri](https://github.com/engshamri) on GitHub, [@mmmmn](https://www.instagram.com/mmmmn/) on Instagram)

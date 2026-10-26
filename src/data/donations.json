@@ -1,0 +1,11 @@
+[
+  {
+    "id": "usdt-trc20",
+    "address": "TLXRM9ZjDxtk6uEuMiKe3Ek8sHC8SQR845"
+  },
+  {
+    "id": "btc-xlayer",
+    "address": "0x63223abFd548A93b04975b217E2f007be0cf4CFA",
+    "okxAddress": "XKO63223abFd548A93b04975b217E2f007be0cf4CFA"
+  }
+]

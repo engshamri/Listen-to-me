@@ -1,10 +1,12 @@
 "use client";
 
-import { CodeXml, Instagram } from "lucide-react";
+import { CodeXml, HandHeart, Instagram } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, REPOSITORY_URL } from "./app-footer";
 import { LogoMark } from "./logo";
 import { Kbd } from "@/components/studio/primitives";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n/provider";
 import { VOICE_LANGUAGES } from "@/lib/voices/catalog";
@@ -65,6 +67,20 @@ export function AboutDialog({ open, section, onOpenChange }: { open: boolean; se
             </a>
           </div>
         </div>
+
+        <section aria-labelledby="about-support" className="space-y-2">
+          <h3 id="about-support" className="font-semibold">
+            {t("about.supportTitle")}
+          </h3>
+          <p className="text-muted-foreground text-sm leading-relaxed">{t("about.supportText")}</p>
+          <Button asChild variant="outline" size="sm">
+            {/* The dialog lives in the shared shell, so close it when leaving for the support page. */}
+            <Link href="/support" onClick={() => onOpenChange(false)}>
+              <HandHeart aria-hidden />
+              {t("about.supportLink")}
+            </Link>
+          </Button>
+        </section>
 
         <section aria-labelledby="about-privacy" className="space-y-2">
           <h3 id="about-privacy" ref={privacyRef} className="scroll-mt-4 font-semibold">
