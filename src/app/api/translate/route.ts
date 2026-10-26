@@ -7,6 +7,7 @@ import { detectLanguage, translateText } from "@/lib/server/translate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const LANG = /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
 

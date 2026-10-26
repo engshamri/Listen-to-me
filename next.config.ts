@@ -11,6 +11,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Loaded from node_modules at run time: ws has optional native add-ons, and
+  // ffmpeg-static locates its binary relative to its own folder.
+  serverExternalPackages: ["ws", "ffmpeg-static"],
+  // Files read from disk at run time; serverless bundles only contain traced files.
+  // Health runs ffmpeg too, to report whether conversion is available.
+  outputFileTracingIncludes: {
+    "/api/convert": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe", "./public/brand/video-cover.png"],
+    "/api/health": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/ffmpeg.exe"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

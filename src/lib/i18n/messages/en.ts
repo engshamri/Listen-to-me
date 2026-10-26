@@ -269,7 +269,6 @@ const en = {
     waitingRetry: "The service is busy. Retrying in {seconds} s…",
     errors: {
       ENGINE_UNAVAILABLE: "The speech service didn't respond.",
-      ENGINE_NOT_INSTALLED: "The speech engine isn't installed. Start the app with “python server.py” to set it up.",
       RATE_LIMITED: "Too many requests right now.",
       INVALID_INPUT: "The request was rejected as invalid.",
       TEXT_TOO_LONG: "This part of the text is too long.",
@@ -303,6 +302,7 @@ const en = {
     videoHint: "A real video with a cover image, for YouTube, Instagram or WhatsApp.",
     ffmpegMissing: "Needs ffmpeg installed where the app runs. See the README.",
     convertFailed: "Conversion failed. The MP3 is still available.",
+    tooLargeToConvert: "This recording is too long to convert on this server (limit {size}). Download the MP3 instead.",
     history: "Earlier in this session",
     historyNote: "Kept only in this browser tab. Closing it clears them.",
     remove: "Remove",
@@ -362,9 +362,6 @@ const en = {
     mocha: "Mocha",
     forest: "Forest",
     amoled: "AMOLED Black",
-  },
-  health: {
-    engineMissing: "The speech engine isn't available on this computer, so audio can't be generated. Start the app with “python server.py”, which installs it automatically.",
   },
   units: {
     seconds: "{s} s",

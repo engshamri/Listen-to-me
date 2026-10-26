@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { GeneratePanel, type GenState } from "./generate-panel";
 import { clearSavedDraft, useDraftAutosave, useElapsed, useHealth, useHydrated, useLatest, useSavedDraft, useSpeechSettings } from "./hooks";
 import { PreviewProvider } from "./preview-context";
-import { Notice } from "./primitives";
 import { ResultPanel, type AudioResult, type ConvertFormat } from "./result-panel";
 import { SettingsPanel } from "./settings-panel";
 import { TextPanel } from "./text-panel";
@@ -218,12 +217,6 @@ function StudioInner() {
         <p className="text-muted-foreground mt-1 text-[15px] leading-relaxed">{t("page.subtitle", { languages: VOICE_LANGUAGES.length })}</p>
       </div>
 
-      {health.loaded && !health.speechEngine && (
-        <Notice tone="error" role="alert" className="mb-4">
-          {t("health.engineMissing")}
-        </Notice>
-      )}
-
       {/*
         DOM order = task order (text → voice → settings → generate → result), so
         keyboard, screen-reader and visual order agree. On large screens the
@@ -277,6 +270,7 @@ function StudioInner() {
             result={current}
             history={history}
             converterAvailable={health.converter}
+            convertMaxBytes={health.convertMaxBytes}
             onOpen={setCurrentId}
             onRemove={(id) =>
               setResults((prev) => {

@@ -29,12 +29,19 @@ async function readPrefs() {
   return { locale, theme };
 }
 
+/** Absolute base for social preview links: SITE_URL, else the Vercel domain, else localhost. */
+function siteUrl(): string {
+  if (process.env.SITE_URL) return process.env.SITE_URL;
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  return vercelHost ? `https://${vercelHost}` : "http://localhost:3000";
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await readPrefs();
   const t = createTranslator(locale);
   const counts = { voices: VOICES.length, languages: VOICE_LANGUAGES.length };
   return {
-    metadataBase: new URL(process.env.SITE_URL || "http://localhost:3000"),
+    metadataBase: new URL(siteUrl()),
     title: t("app.metaTitle"),
     description: t("app.metaDescription", counts),
     applicationName: "Listen to me",

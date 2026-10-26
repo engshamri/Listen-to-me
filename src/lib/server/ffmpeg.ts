@@ -15,18 +15,42 @@ export class ConvertError extends Error {
 
 const slots = new Semaphore(serverConfig.convertMaxConcurrency);
 
-let ffmpegCheck: { ok: boolean; at: number } | null = null;
+let resolved: { bin: string | null; at: number } | null = null;
+
+async function runs(bin: string): Promise<boolean> {
+  try {
+    return (await runProcess(bin, ["-version"], { timeoutMs: 10_000 })).code === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Path of the binary installed by the optional ffmpeg-static package, if any. */
+async function bundledFfmpeg(): Promise<string | null> {
+  try {
+    return (await import("ffmpeg-static")).default ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** FFMPEG_BIN when set; otherwise ffmpeg on PATH, then the bundled copy. Rechecked every minute. */
+async function ffmpegBinary(): Promise<string | null> {
+  if (resolved && Date.now() - resolved.at < 60_000) return resolved.bin;
+  const candidates = serverConfig.ffmpegBin ? [serverConfig.ffmpegBin] : ["ffmpeg", await bundledFfmpeg()];
+  let bin: string | null = null;
+  for (const candidate of candidates) {
+    if (candidate && (await runs(candidate))) {
+      bin = candidate;
+      break;
+    }
+  }
+  resolved = { bin, at: Date.now() };
+  return bin;
+}
 
 export async function hasFfmpeg(): Promise<boolean> {
-  if (ffmpegCheck && Date.now() - ffmpegCheck.at < 60_000) return ffmpegCheck.ok;
-  let ok = false;
-  try {
-    ok = (await runProcess(serverConfig.ffmpegBin, ["-version"], { timeoutMs: 10_000 })).code === 0;
-  } catch {
-    ok = false;
-  }
-  ffmpegCheck = { ok, at: Date.now() };
-  return ok;
+  return (await ffmpegBinary()) !== null;
 }
 
 function argsFor(format: ConvertFormat, input: string, output: string): string[] {
@@ -53,7 +77,8 @@ function argsFor(format: ConvertFormat, input: string, output: string): string[]
 }
 
 export async function convertAudio(mp3: Uint8Array, format: ConvertFormat, signal?: AbortSignal): Promise<Buffer> {
-  if (!(await hasFfmpeg())) throw new ConvertError("NOT_INSTALLED");
+  const bin = await ffmpegBinary();
+  if (!bin) throw new ConvertError("NOT_INSTALLED");
   const release = await slots.acquire(signal).catch(() => {
     throw new ConvertError("ABORTED");
   });
@@ -64,7 +89,7 @@ export async function convertAudio(mp3: Uint8Array, format: ConvertFormat, signa
       await writeFile(input, mp3);
       let result;
       try {
-        result = await runProcess(serverConfig.ffmpegBin, argsFor(format, input, output), { signal, timeoutMs: LIMITS.convertTimeoutMs });
+        result = await runProcess(bin, argsFor(format, input, output), { signal, timeoutMs: LIMITS.convertTimeoutMs });
       } catch (e) {
         if (e instanceof ProcessError && e.reason === "ABORTED") throw new ConvertError("ABORTED");
         if (e instanceof ProcessError && e.reason === "TIMEOUT") throw new ConvertError("TIMEOUT");

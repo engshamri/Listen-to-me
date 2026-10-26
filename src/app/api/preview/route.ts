@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
 import { serverConfig } from "@/lib/server/config";
-import { EdgeError, synthesizeEdge } from "@/lib/server/edge";
+import { synthesizeEdge } from "@/lib/server/edge";
 import { apiError, clientKey, crossSiteRejection } from "@/lib/server/http";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { translateText } from "@/lib/server/translate";
@@ -11,6 +11,7 @@ import { PREVIEW_SAMPLES, sampleFor } from "@/lib/voices/samples";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const inflight = new Map<string, Promise<Buffer>>();
 
@@ -25,10 +26,13 @@ async function sampleText(voice: Voice): Promise<string> {
 async function generate(voice: Voice, file: string): Promise<Buffer> {
   const text = await sampleText(voice);
   const audio = await synthesizeEdge({ text, voice: voice.id, rate: "+0%", pitch: "+0Hz" });
-  await mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tmp, audio);
-  await rename(tmp, file).catch(() => {});
+  // Caching is best effort: a read-only or full disk must not cost the visitor the preview.
+  try {
+    await mkdir(path.dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(tmp, audio);
+    await rename(tmp, file);
+  } catch {}
   return audio;
 }
 
@@ -37,7 +41,8 @@ function mp3(buf: Buffer) {
     headers: {
       "Content-Type": "audio/mpeg",
       "Content-Length": String(buf.length),
-      "Cache-Control": "public, max-age=86400",
+      // Samples are fixed sentences, so a CDN (Vercel's included) may keep them until the next deploy.
+      "Cache-Control": "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=86400",
     },
   });
 }
@@ -66,8 +71,7 @@ export async function GET(req: NextRequest) {
   }
   try {
     return mp3(await job);
-  } catch (e) {
-    if (e instanceof EdgeError && e.code === "ENGINE_NOT_INSTALLED") return apiError("ENGINE_NOT_INSTALLED", 503, e.message);
+  } catch {
     return apiError("PREVIEW_UNAVAILABLE", 503, "Preview unavailable");
   }
 }

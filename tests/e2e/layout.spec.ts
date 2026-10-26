@@ -39,6 +39,23 @@ test("footer and About credit the owner and link to Instagram and the source cod
   await expect(about.getByRole("link", { name: "Source code on GitHub" })).toHaveAttribute("href", "https://github.com/engshamri/Listen_to_me");
 });
 
+test("a recording over the server's conversion limit explains why M4A and MP4 are unavailable", async ({ page }) => {
+  // MPEG-2 Layer III frames (24 kHz, 48 kbps, mono), as the speech service sends: about 0.5 s.
+  const frame = Buffer.concat([Buffer.from([0xff, 0xf3, 0x64, 0xc4]), Buffer.alloc(140)]);
+  const mp3 = Buffer.concat(Array.from({ length: 21 }, () => frame));
+  await page.route("**/api/health", (r) => r.fulfill({ json: { converter: true, convertMaxBytes: 1000, translation: "Google Translate", backupVoice: true } }));
+  await page.route("**/api/tts", (r) => r.fulfill({ body: mp3, contentType: "audio/mpeg" }));
+  await openFresh(page);
+  await editor(page).fill("A short sentence.");
+  await generateButton(page).click();
+  const result = page.getByRole("region", { name: "Your audio" });
+  await expect(result).toBeVisible();
+  await expect(result.getByRole("button", { name: "M4A audio" })).toBeDisabled();
+  await expect(result.getByRole("button", { name: "MP4 video" })).toBeDisabled();
+  await expect(result.getByText(/too long to convert on this server/)).toHaveCount(2);
+  await expect(result.getByRole("link", { name: "Download MP3" })).toBeVisible();
+});
+
 test("task order matches keyboard order: text → voice → settings → generate", async ({ page }) => {
   await openFresh(page);
   const positions = await page.evaluate(() => {

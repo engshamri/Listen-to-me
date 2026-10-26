@@ -8,15 +8,14 @@
  *    so the job can resume from where it stopped.
  *  - The backup engine is only used when the caller sets `allowBackup`
  *    (i.e. after the user explicitly agreed); parts it reads are recorded.
- *  - Aborting cancels every in-flight request; the server then kills the
- *    synthesis process.
+ *  - Aborting cancels every in-flight request; the server then closes its
+ *    connection to the speech service.
  */
 
 export type EngineKind = "edge" | "backup";
 
 export type GenerationErrorCode =
   | "ENGINE_UNAVAILABLE"
-  | "ENGINE_NOT_INSTALLED"
   | "RATE_LIMITED"
   | "INVALID_INPUT"
   | "TEXT_TOO_LONG"
@@ -111,8 +110,6 @@ async function requestChunk(text: string, settings: JobSettings, engine: EngineK
   switch (code) {
     case "RATE_LIMITED":
       throw new ChunkError("RATE_LIMITED", true, false, body.error?.retryAfter ?? Number(res.headers.get("Retry-After") ?? 5));
-    case "ENGINE_NOT_INSTALLED":
-      throw new ChunkError("ENGINE_NOT_INSTALLED", false);
     case "NO_AUDIO":
       throw new ChunkError("NO_AUDIO", false, fallback);
     case "TEXT_TOO_LONG":

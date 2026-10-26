@@ -131,7 +131,7 @@ def load_texts(keys: set[str], second: bool = False) -> dict[str, str]:
 
 # ------------------------------------------------------------ synthesis ---
 def full_voice_name(voice_id: str) -> str:
-    """Same conversion as scripts/edge_synth.py: works for ids with script/region subtags."""
+    """Same conversion as src/lib/server/edge.ts: works for ids with script/region subtags."""
     locale, name = voice_id.rsplit("-", 1)
     return f"Microsoft Server Speech Text to Speech Voice ({locale}, {name})"
 

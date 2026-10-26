@@ -84,24 +84,22 @@ export function GeneratePanel(props: GeneratePanelProps) {
                 <X aria-hidden />
               </Button>
             </div>
-            {state.code !== "ENGINE_NOT_INSTALLED" && (
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={props.onRetry}>
-                  <RotateCw aria-hidden />
-                  {t("generate.retry")}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={props.onRetry}>
+                <RotateCw aria-hidden />
+                {t("generate.retry")}
+              </Button>
+              {state.done > 0 && state.index > 0 && (
+                <Button size="sm" variant="outline" onClick={props.onKeepPartial}>
+                  {t("generate.keepPartial")}
                 </Button>
-                {state.done > 0 && state.index > 0 && (
-                  <Button size="sm" variant="outline" onClick={props.onKeepPartial}>
-                    {t("generate.keepPartial")}
-                  </Button>
-                )}
-                {backupEnabled && state.fallbackAvailable && (
-                  <Button size="sm" variant="outline" onClick={props.onUseBackup}>
-                    {t("generate.useBackup")}
-                  </Button>
-                )}
-              </div>
-            )}
+              )}
+              {backupEnabled && state.fallbackAvailable && (
+                <Button size="sm" variant="outline" onClick={props.onUseBackup}>
+                  {t("generate.useBackup")}
+                </Button>
+              )}
+            </div>
             {backupEnabled && state.fallbackAvailable && <p className="text-[13px] leading-relaxed opacity-90">{t("generate.backupExplain")}</p>}
           </div>
         )}

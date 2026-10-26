@@ -81,10 +81,10 @@ describe("generation engine", () => {
   }, 10_000);
 
   it("does not retry permanent errors", async () => {
-    const calls = mockTts(() => ({ status: 503, body: { error: { code: "ENGINE_NOT_INSTALLED" } } }));
+    const calls = mockTts(() => ({ status: 413, body: { error: { code: "TEXT_TOO_LONG" } } }));
     const job = createJob(settings, ["a"]);
     const err = await runJob(job, { signal: new AbortController().signal, maxAttempts: 3 }).catch((e) => e);
-    expect(err.code).toBe("ENGINE_NOT_INSTALLED");
+    expect(err.code).toBe("TEXT_TOO_LONG");
     expect(calls.length).toBe(1);
   });
 

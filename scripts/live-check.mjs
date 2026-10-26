@@ -49,7 +49,8 @@ console.log(`Live checks against ${BASE}`);
 
 await check("health reports capabilities", async () => {
   const h = await (await fetch(`${BASE}/api/health`)).json();
-  assert(typeof h.speechEngine === "boolean", "missing speechEngine");
+  assert(typeof h.converter === "boolean", "missing converter");
+  assert(Number.isFinite(h.convertMaxBytes) && h.convertMaxBytes > 0, "missing convertMaxBytes");
   return JSON.stringify(h);
 });
 

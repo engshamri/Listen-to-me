@@ -1,4 +1,4 @@
-/** Caps how many expensive subprocesses (Python, ffmpeg) run at once. */
+/** Caps how many expensive operations (speech sessions, ffmpeg) run at once. */
 export class Semaphore {
   private active = 0;
   private queue: (() => void)[] = [];

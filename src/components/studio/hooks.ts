@@ -135,18 +135,19 @@ export function clearSavedDraft() {
 
 export interface HealthState {
   loaded: boolean;
-  speechEngine: boolean;
   converter: boolean;
+  /** Largest MP3 the server can convert to M4A/MP4. */
+  convertMaxBytes: number;
   backupVoice: boolean;
 }
 
 export function useHealth(): HealthState {
-  const [health, setHealth] = useState<HealthState>({ loaded: false, speechEngine: true, converter: true, backupVoice: true });
+  const [health, setHealth] = useState<HealthState>({ loaded: false, converter: true, convertMaxBytes: Number.POSITIVE_INFINITY, backupVoice: true });
   useEffect(() => {
     const ctrl = new AbortController();
     fetch("/api/health", { signal: ctrl.signal })
       .then((r) => r.json())
-      .then((h: Omit<HealthState, "loaded">) => setHealth({ loaded: true, speechEngine: h.speechEngine, converter: h.converter, backupVoice: h.backupVoice }))
+      .then((h: Omit<HealthState, "loaded">) => setHealth({ loaded: true, converter: h.converter, convertMaxBytes: h.convertMaxBytes, backupVoice: h.backupVoice }))
       .catch(() => {});
     return () => ctrl.abort();
   }, []);

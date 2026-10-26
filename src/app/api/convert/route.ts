@@ -7,8 +7,22 @@ import { rateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const CONTENT_TYPES: Record<ConvertFormat, string> = { m4a: "audio/mp4", mp4: "video/mp4" };
+
+/** Streamed, so hosts that cap buffered responses (Vercel: 4.5 MB) still deliver long videos. */
+function streamOf(buf: Buffer): ReadableStream<Uint8Array> {
+  let offset = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (offset >= buf.length) return controller.close();
+      const end = Math.min(offset + 256 * 1024, buf.length);
+      controller.enqueue(new Uint8Array(buf.buffer, buf.byteOffset + offset, end - offset));
+      offset = end;
+    },
+  });
+}
 
 /**
  * POST an MP3 body to /api/convert?format=m4a|mp4.
@@ -37,9 +51,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const out = await convertAudio(bytes, format, req.signal);
-    return new NextResponse(new Uint8Array(out), {
-      headers: { "Content-Type": CONTENT_TYPES[format], "Content-Length": String(out.length), "Cache-Control": "no-store" },
-    });
+    return new NextResponse(streamOf(out), { headers: { "Content-Type": CONTENT_TYPES[format], "Cache-Control": "no-store" } });
   } catch (e) {
     const code = e instanceof ConvertError ? e.code : "FAILED";
     if (code === "ABORTED") return new Response(null, { status: 499 });

@@ -8,12 +8,13 @@ Listen to me (اسمعني) - local launcher.
     python server.py --host 0.0.0.0  # reachable from other devices on your network
     python server.py --help
 
-The app itself is a Next.js (Node.js) application. This script is a small,
-dependency-free supervisor that:
+The app itself is a Next.js (Node.js) application; speech synthesis is built
+in, so it needs no Python packages. This script is a small, dependency-free
+supervisor that:
   1. checks Node.js, npm and Python versions,
-  2. installs the edge-tts Python package and the npm packages if missing,
+  2. installs the npm packages if missing or outdated,
   3. builds the production bundle when the sources changed,
-  4. starts the server with THIS Python interpreter for speech synthesis,
+  4. starts the server,
   5. waits until it answers, prints the URL and opens the browser,
   6. stops the whole process tree cleanly on Ctrl+C.
 
@@ -23,7 +24,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 import shutil
@@ -43,7 +43,8 @@ MIN_NODE = (20, 9)
 MIN_PYTHON = (3, 9)
 STAMP_INSTALL = ROOT / "node_modules" / ".asmani-install-hash"
 STAMP_BUILD = ROOT / ".next" / ".asmani-build-hash"
-BUILD_INPUTS = ["src", "public", "scripts/edge_synth.py", "package.json", "package-lock.json", "next.config.ts", "tsconfig.json", "postcss.config.mjs"]
+BUNDLED_FFMPEG = ROOT / "node_modules" / "ffmpeg-static" / ("ffmpeg.exe" if IS_WINDOWS else "ffmpeg")
+BUILD_INPUTS = ["src", "public", "package.json", "package-lock.json", "next.config.ts", "tsconfig.json", "postcss.config.mjs"]
 
 
 # ----------------------------------------------------------------- output ---
@@ -143,28 +144,14 @@ def check_node() -> tuple[str, str]:
     return node, npm
 
 
-def ensure_edge_tts(allow_install: bool) -> None:
-    if importlib.util.find_spec("edge_tts"):
-        ok("edge-tts (speech engine) is installed")
-        return
-    if not allow_install:
-        fail("The edge-tts Python package is missing.", f"Install it with:\n  {sys.executable} -m pip install -r requirements.txt")
-    info("Installing the edge-tts speech engine (needs internet)...")
-    code = run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "-r", "requirements.txt"])
-    if code != 0:
-        info("Retrying with --user ...")
-        code = run([sys.executable, "-m", "pip", "install", "--user", "--disable-pip-version-check", "-r", "requirements.txt"])
-    if code != 0:
-        fail("Could not install edge-tts.", f"Check your internet connection, then run:\n  {sys.executable} -m pip install -r requirements.txt")
-    importlib.invalidate_caches()
-    ok("edge-tts installed")
-
-
 def check_ffmpeg() -> None:
     if shutil.which("ffmpeg"):
         ok("ffmpeg found (M4A and MP4 video export enabled)")
+    elif BUNDLED_FFMPEG.is_file():
+        ok("Using the ffmpeg installed with the npm packages (M4A and MP4 video export enabled)")
     else:
         warn("ffmpeg not found: MP3 works; M4A/MP4 export is disabled.")
+        warn("  Run 'npm install' again, or install ffmpeg:")
         warn("  Windows: winget install Gyan.FFmpeg   macOS: brew install ffmpeg   Linux: sudo apt install ffmpeg")
 
 
@@ -207,7 +194,6 @@ def ensure_build(npm: str, force: bool) -> None:
 # ------------------------------------------------------------------ serve ---
 def start_server(node: str, args: argparse.Namespace) -> subprocess.Popen:
     env = os.environ.copy()
-    env["PYTHON_BIN"] = sys.executable  # the interpreter that has edge-tts
     env.setdefault("NEXT_TELEMETRY_DISABLED", "1")
     env["PORT"] = str(args.port)
     next_bin = str(ROOT / "node_modules" / "next" / "dist" / "bin" / "next")
@@ -268,12 +254,12 @@ def main() -> None:
     print("\n  Listen to me - local server\n  ---------------------------\n", flush=True)
     check_python()
     node, npm = check_node()
-    ensure_edge_tts(allow_install=not args.no_install)
-    check_ffmpeg()
     if args.check:
+        check_ffmpeg()
         ok("Environment looks good.")
         return
     ensure_node_modules(npm, allow_install=not args.no_install)
+    check_ffmpeg()
     # PDF and OCR engine files served from public/ (no-op when already in place).
     if run([node, str(ROOT / "scripts" / "copy-vendor-assets.mjs")]) != 0:
         warn("Could not copy the PDF/OCR engine files; PDF import may not work. Try: npm install")

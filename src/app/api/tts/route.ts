@@ -10,6 +10,7 @@ import { backupLanguageFor } from "@/lib/voices/fallback";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const inRange = (min: number, max: number) => (v: string) => {
   const n = Number.parseInt(v, 10);
@@ -74,7 +75,6 @@ export async function POST(req: NextRequest) {
     const code = e instanceof EdgeError ? e.code : "ENGINE_UNAVAILABLE";
     if (code === "ABORTED") return new Response(null, { status: 499 });
     if (code !== "TIMEOUT") console.warn(`[tts] ${voice.id}: ${code} ${(e as Error).message}`);
-    if (code === "ENGINE_NOT_INSTALLED") return apiError("ENGINE_NOT_INSTALLED", 503, (e as Error).message);
     if (code === "NO_AUDIO") return apiError("NO_AUDIO", 422, "The voice produced no audio for this text", { fallbackAvailable: Boolean(backupLang) });
     return apiError("ENGINE_UNAVAILABLE", 502, "The speech service did not respond", { fallbackAvailable: Boolean(backupLang) });
   }

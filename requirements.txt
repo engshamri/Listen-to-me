@@ -1,2 +1,3 @@
-# Speech engine used by scripts/edge_synth.py (installed automatically by `python server.py`).
+# Only for maintenance scripts (scripts/save_voices.py and scripts/voice-qa/).
+# The app itself, including `python server.py`, needs no Python packages.
 edge-tts>=7.0.0,<8

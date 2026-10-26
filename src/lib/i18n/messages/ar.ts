@@ -295,7 +295,6 @@ const ar: Widen<Messages> = {
     waitingRetry: "الخدمة مشغولة. إعادة المحاولة بعد {seconds} ث…",
     errors: {
       ENGINE_UNAVAILABLE: "لم تستجب خدمة الكلام.",
-      ENGINE_NOT_INSTALLED: "محرك الكلام غير مثبّت. شغّل التطبيق بالأمر «python server.py» لتثبيته.",
       RATE_LIMITED: "عدد الطلبات كبير حالياً.",
       INVALID_INPUT: "رُفض الطلب لأنه غير صالح.",
       TEXT_TOO_LONG: "هذا الجزء من النص طويل جداً.",
@@ -329,6 +328,7 @@ const ar: Widen<Messages> = {
     videoHint: "فيديو حقيقي بصورة غلاف، مناسب لـ YouTube وInstagram وWhatsApp.",
     ffmpegMissing: "يتطلب تثبيت ffmpeg على الجهاز الذي يعمل عليه التطبيق. راجع ملف README.",
     convertFailed: "فشل التحويل، وما زال ملف MP3 متاحاً.",
+    tooLargeToConvert: "هذا التسجيل أطول من أن يُحوَّل على هذا الخادم (الحد {size}). نزّل ملف MP3 بدلاً من ذلك.",
     history: "في هذه الجلسة",
     historyNote: "تُحفظ في علامة التبويب هذه فقط، وتُحذف عند إغلاقها.",
     remove: "إزالة",
@@ -388,9 +388,6 @@ const ar: Widen<Messages> = {
     mocha: "موكا",
     forest: "الغابة",
     amoled: "أسود AMOLED",
-  },
-  health: {
-    engineMissing: "محرك الكلام غير متاح على هذا الجهاز، لذا لا يمكن توليد الصوت. شغّل التطبيق بالأمر «python server.py» لتثبيته تلقائياً.",
   },
   units: {
     seconds: "{s} ث",
