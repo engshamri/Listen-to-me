@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Loader2, RotateCw, ShieldCheck, X } from "lucide-react";
+import { AudioLines, Headphones, Loader2, RotateCw, ShieldCheck, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useShell } from "@/components/app/app-shell";
 import { ProgressBar } from "./primitives";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export type GenState =
   | { phase: "idle" }
-  | { phase: "running"; done: number; total: number; waiting: number; startedAt: number }
+  | { phase: "running"; done: number; total: number; waiting: number; startedAt: number; /** Finished leading parts, playable now. */ ready: number }
   | { phase: "failed"; code: GenerationErrorCode; index: number; fallbackAvailable: boolean; done: number; total: number };
 
 interface GeneratePanelProps {
@@ -22,6 +22,8 @@ interface GeneratePanelProps {
   backupEnabled: boolean;
   onGenerate: () => void;
   onCancel: () => void;
+  /** Opens reading mode on the parts that are ready while the rest generate. */
+  onListenNow: () => void;
   onRetry: () => void;
   onUseBackup: () => void;
   onKeepPartial: () => void;
@@ -126,10 +128,18 @@ export function GeneratePanel(props: GeneratePanelProps) {
               label={t("generate.generating")}
               valueText={state.total > 1 ? t("generate.part", { done: state.done, total: state.total }) : undefined}
             />
-            <Button variant="outline" className="w-full" onClick={props.onCancel}>
-              <X aria-hidden />
-              {t("generate.cancel")}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={props.onCancel}>
+                <X aria-hidden />
+                {t("generate.cancel")}
+              </Button>
+              {state.total > 1 && state.ready > 0 && (
+                <Button className="flex-1" onClick={props.onListenNow}>
+                  <Headphones aria-hidden />
+                  {t("generate.listenNow")}
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="space-y-2">

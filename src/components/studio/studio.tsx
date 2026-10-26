@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { GeneratePanel, type GenState } from "./generate-panel";
+import { LiveListen } from "./live-listen";
 import { clearSavedDraft, useDraftAutosave, useElapsed, useHealth, useHydrated, useLatest, useSavedDraft, useSpeechSettings } from "./hooks";
 import { PreviewProvider } from "./preview-context";
 import { ResultPanel, type AudioResult, type ConvertFormat } from "./result-panel";
@@ -70,6 +71,8 @@ function StudioInner() {
   const chosenRef = useLatest(chosenChapters);
 
   const [gen, setGen] = useState<GenState>({ phase: "idle" });
+  // Listening while generating: the job being listened to, kept until reading mode closes.
+  const [live, setLive] = useState<ActiveJob | null>(null);
   const activeRef = useRef<ActiveJob | null>(null);
   const ctrlRef = useRef<AbortController | null>(null);
   const elapsed = useElapsed(gen.phase === "running" ? gen.startedAt : null);
@@ -185,12 +188,12 @@ function StudioInner() {
       const { job } = active;
       const ctrl = new AbortController();
       ctrlRef.current = ctrl;
-      setGen({ phase: "running", done: completedCount(job), total: job.chunks.length, waiting: 0, startedAt: Date.now() });
+      setGen({ phase: "running", done: completedCount(job), total: job.chunks.length, waiting: 0, startedAt: Date.now(), ready: contiguousPrefix(job) });
       try {
         await runJob(job, {
           signal: ctrl.signal,
           concurrency: 3,
-          onProgress: (done, total) => setGen((g) => (g.phase === "running" ? { ...g, done, total } : g)),
+          onProgress: (done, total) => setGen((g) => (g.phase === "running" ? { ...g, done, total, ready: contiguousPrefix(job) } : g)),
           onWait: (seconds) => setGen((g) => (g.phase === "running" ? { ...g, waiting: seconds } : g)),
         });
         await finish(active, job.chunks.length);
@@ -288,6 +291,7 @@ function StudioInner() {
           backupEnabled={health.backupVoice}
           onGenerate={generate}
           onCancel={() => ctrlRef.current?.abort()}
+          onListenNow={() => activeRef.current && setLive(activeRef.current)}
           onRetry={() => activeRef.current && void run(activeRef.current)}
           onUseBackup={() => {
             if (!activeRef.current) return;
@@ -325,6 +329,8 @@ function StudioInner() {
           />
         )}
       </div>
+
+      {live && <LiveListen source={live} generating={gen.phase === "running"} onClose={() => setLive(null)} />}
 
       <VoiceBrowser
         open={browserOpen}

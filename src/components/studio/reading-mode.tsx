@@ -50,6 +50,7 @@ export function ReadingMode({
   title,
   bookmarks,
   onExportNotes,
+  status,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -62,6 +63,8 @@ export function ReadingMode({
   /** Bookmarks and notes (kept in the library). */
   bookmarks?: BookmarkControls;
   onExportNotes?: () => void;
+  /** A line under the title, e.g. generation progress while listening early. */
+  status?: string;
 }) {
   const { t, fmt } = useI18n();
   const [settings, setSettings] = useSpeechSettings();
@@ -121,6 +124,7 @@ export function ReadingMode({
             <DialogTitle className="truncate" dir="auto">
               {title ?? t("readAlong.title")}
             </DialogTitle>
+            {status && <p className="text-primary mt-0.5 truncate text-[13px] font-medium">{status}</p>}
             {currentChapter >= 0 && (
               <p className="text-muted-foreground mt-0.5 truncate text-[13px]" dir="auto">
                 {t("chapters.current", { title: chapterTitle(currentChapter) })}

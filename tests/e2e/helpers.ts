@@ -51,8 +51,12 @@ export const LIVE = !process.env.OFFLINE;
 /** A real 6-second MP3 (silence), for tests that stub the speech API. */
 export const FIXTURE_AUDIO = readFileSync(join(__dirname, "..", "fixtures", "silence-6s.mp3"));
 
-/** Answers /api/tts like the server does with word timings: multipart audio + words ([text, start] pairs, 0.3 s each). */
-export async function stubSpeech(page: Page, words: [string, number][]) {
+/**
+ * Answers /api/tts like the server does with word timings: multipart audio + words
+ * ([text, start] pairs, 0.3 s each). `delayMs(n)` delays the n-th request (0-based).
+ */
+export async function stubSpeech(page: Page, words: [string, number][], delayMs?: (n: number) => number) {
+  let requests = 0;
   const boundary = "readalongboundary";
   const json = JSON.stringify(words.map(([text, start]) => ({ text, start, end: start + 0.3 })));
   const body = Buffer.concat([
@@ -60,5 +64,9 @@ export async function stubSpeech(page: Page, words: [string, number][]) {
     FIXTURE_AUDIO,
     Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="words"\r\n\r\n${json}\r\n--${boundary}--\r\n`),
   ]);
-  await page.route("**/api/tts", (route) => route.fulfill({ status: 200, headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` }, body }));
+  await page.route("**/api/tts", async (route) => {
+    const wait = delayMs?.(requests++) ?? 0;
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    await route.fulfill({ status: 200, headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` }, body }).catch(() => {});
+  });
 }

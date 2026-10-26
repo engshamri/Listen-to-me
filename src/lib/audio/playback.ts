@@ -23,3 +23,13 @@ export function setListeningSpeed(el: HTMLMediaElement, rate: number) {
   el.playbackRate = rate;
   el.preservesPitch = true;
 }
+
+/** Switches the element to a new source and continues from `at` seconds, playing if `play`. */
+export function switchSource(el: HTMLMediaElement, url: string, at: number, play: boolean) {
+  const resume = () => {
+    el.currentTime = at;
+    if (play) void el.play().catch(() => {});
+  };
+  el.addEventListener("loadedmetadata", resume, { once: true });
+  el.src = url;
+}

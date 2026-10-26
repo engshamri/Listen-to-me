@@ -94,6 +94,15 @@ The browser asks `/api/tts` for word timings with `"marks": true`. The response 
 5. **Reading mode** and the result panel control the same `<audio>` element, so exclusive playback still holds. Listening speed uses `playbackRate` with `preservesPitch`. Playback controls stay left-to-right in Arabic, as in media players.
 6. **Subtitles** (`lib/audio/subtitles.ts`): one cue per sentence. Sentences over 84 characters are split at word times, and lines wrap at 42 characters.
 
+## Listening while generating
+
+When a text has several parts, "Listen now" appears as soon as the first part is ready. It opens reading mode on the finished leading parts (`contiguousPrefix`) while the rest are still being generated (`components/studio/live-listen.tsx`).
+
+- The player holds the ready parts as one MP3 blob, and the read-along timeline is rebuilt as parts arrive.
+- When more parts are ready and less than 20 s of the held audio is left, it switches to the longer blob at the same second, at the pause before the next sentence (`switchSource`). If a part only arrives as the audio ends, it switches there. If the listener reaches the end before the next part exists, playback waits and resumes when it arrives.
+- Measured with real speech, a switch landed inside a 0.44 s pause between sentences and played on with a 0.08 s stall.
+- **Why not MediaSource?** Streaming through MediaSource would avoid the switch, but browsers cap buffered audio at about 12 MB (around 30 minutes at 48 kbit/s), which long lectures exceed. The blob approach works the same in every browser, including iPhone Safari.
+
 ## Speech service client
 
 `src/lib/server/edge.ts` implements the WebSocket protocol of Microsoft Edge's read-aloud service (the one the edge-tts project documents):
