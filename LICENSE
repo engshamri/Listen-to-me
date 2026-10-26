@@ -8,6 +8,7 @@ from the copyright holder.
 Contact: https://www.instagram.com/mmmmn/
 
 Third-party software included as dependencies (for example Next.js, React,
-pdf.js, tesseract.js and its language data, Radix UI, lucide, flag-icons and
-the edge-tts Python package) is distributed under its own license terms, which
-remain in effect.
+pdf.js, tesseract.js and its language data, Radix UI, lucide, flag-icons, ws,
+ffmpeg-static and, for maintenance scripts, the edge-tts Python package) is
+distributed under its own license terms, which remain in effect. See
+THIRD_PARTY_NOTICES.md.

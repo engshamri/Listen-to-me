@@ -25,7 +25,7 @@ The Arabic name اسمعني (*Asma'ni*) means “listen to me”.
 
 ## Project status
 
-Working and tested locally on Windows 11 (see [Testing](#testing)). It is designed as a **local or single-server application**: speech and translation use free, keyless public endpoints that can change or rate-limit without notice, so it is not yet suited to high-traffic public hosting. See [Limitations](#limitations).
+Working and tested on Windows 11 (see [Testing](#testing)). Run it on your own computer with `python server.py`, or deploy it to Vercel as a demo with no configuration (see [Deploying on Vercel](#deploying-on-vercel)). Speech and translation use free, keyless public endpoints that can change or rate-limit without notice, so it is not suited to high-traffic production use. See [Limitations](#limitations).
 
 ## Features
 
@@ -43,11 +43,11 @@ Working and tested locally on Windows 11 (see [Testing](#testing)). It is design
 | **Voice consistency** | No silent fallback. If the speech service fails, you choose: retry, keep the finished parts, or explicitly accept a backup voice; any part read by it is listed with the result |
 | **Results** | One controlled player (never two sounds at once, no autoplay) · exact duration from the MP3 frames · size, voice, speed, pitch, status · MP3 download · M4A (audio-only AAC) and **MP4 video** (H.264 still cover + audio) on demand · descriptive, timestamped file names · session history (kept only in the tab) |
 | **Interface** | English (default) and Arabic with full RTL · 18 themes (10 light, 8 dark) + System in a gallery of live previews; saved and server-rendered (no flash) · WCAG 2.2 AA contrast verified for every theme · responsive layout with a sticky Generate bar on phones · reduced-motion support |
-| **Security** | Input validation (zod) · body-size caps · rate limits · cross-site request protection · concurrency caps for Python/ffmpeg · no shell execution · private temp directories deleted after each request · security headers |
+| **Security** | Input validation (zod) · body-size caps · rate limits · cross-site request protection · concurrency caps for speech sessions and ffmpeg · no shell execution · private temp directories deleted after each request · security headers |
 
 ## Quick start
 
-**Requirements:** [Node.js 20.9+](https://nodejs.org) and [Python 3.9+](https://www.python.org/downloads/). Optional: [ffmpeg](https://ffmpeg.org) for M4A/MP4 export. Internet access is needed while generating speech or translating (OCR and PDF/TXT import work offline).
+**Requirements:** [Node.js 20.9+](https://nodejs.org), and [Python 3.9+](https://www.python.org/downloads/) for the `server.py` launcher (the app itself needs no Python packages). Internet access is needed while generating speech or translating (OCR and PDF/TXT import work offline).
 
 ```bash
 git clone https://github.com/engshamri/Listen_to_me.git
@@ -55,7 +55,7 @@ cd Listen_to_me
 python server.py
 ```
 
-On the first run the launcher installs the `edge-tts` Python package and the npm packages, builds the app, starts it on <http://localhost:3000> and opens your browser. Later runs start in seconds and rebuild only when the source changed. Stop it with `Ctrl + C`.
+On the first run the launcher installs the npm packages (including a copy of ffmpeg for M4A/MP4 export), builds the app, starts it on <http://localhost:3000> and opens your browser. Later runs start in seconds and rebuild only when the source changed. Stop it with `Ctrl + C`.
 
 | Shell | Command |
 |---|---|
@@ -74,7 +74,9 @@ python server.py --check          # only check the environment
 python server.py --help
 ```
 
-### Installing ffmpeg (optional)
+### ffmpeg
+
+M4A and MP4 export use ffmpeg from your `PATH` if present, otherwise the copy that `npm install` downloads (the `ffmpeg-static` package). Only if that download is blocked do you need to install it yourself:
 
 - Windows: `winget install Gyan.FFmpeg` (then open a new terminal)
 - macOS: `brew install ffmpeg`
@@ -83,18 +85,38 @@ python server.py --help
 ### Manual setup (without the launcher)
 
 ```bash
-python -m pip install -r requirements.txt
 npm install          # also copies the pdf.js and OCR engine files into public/
 npm run build
 npm start            # http://localhost:3000
 # or: npm run dev    # development server
 ```
 
-If more than one Python is installed, point the app at the one that has `edge-tts`: set `PYTHON_BIN` (see `.env.example`).
-
 ## Configuration
 
-Everything works without configuration. To change defaults, copy `.env.example` to `.env.local`. Available settings: site URL for social previews, Python/ffmpeg paths, concurrency, rate limits, the translation provider (Google's free endpoint or a self-hosted [LibreTranslate](https://libretranslate.com)), whether the opt-in backup voice is offered, and `TRUST_PROXY` for deployments behind a reverse proxy.
+Everything works without configuration. To change defaults, copy `.env.example` to `.env.local`. Available settings: site URL for social previews, the ffmpeg path, speech timeout, concurrency, the conversion size limit, rate limits, the translation provider (Google's free endpoint or a self-hosted [LibreTranslate](https://libretranslate.com)), whether the opt-in backup voice is offered, and `TRUST_PROXY` for deployments behind a reverse proxy.
+
+## Deploying on Vercel
+
+Import the repository in Vercel (**Add New → Project**). The Next.js preset, `npm install` and `npm run build` are detected automatically, and no environment variables are required.
+
+What works on Vercel:
+
+- **Speech** for every voice: the app talks to Microsoft's read-aloud service directly from Node.js, so no Python is needed on the server.
+- **Voice previews**, cached in the function's temp folder and by Vercel's CDN until the next deployment.
+- **Translation**, plus TXT/PDF import and OCR, which run in the visitor's browser.
+- **M4A and MP4 export** with the ffmpeg binary that `npm install` downloads during the build. Vercel caps uploads to a function at 4.5 MB, so recordings up to about 4 MB of MP3 (roughly 11 minutes) can be converted; longer ones show a message and stay available as MP3. Converted files are streamed back, so their size is not capped.
+
+Applied automatically when the `VERCEL` variable is present:
+
+| Setting | On Vercel |
+|---|---|
+| Proxy headers (`TRUST_PROXY`) | Trusted: Vercel sets `X-Forwarded-For` itself, so rate limits apply per visitor |
+| Preview cache (`PREVIEW_CACHE_DIR`) | System temp folder (the rest of the file system is read-only) |
+| Social preview links (`SITE_URL`) | The project's production domain |
+| Conversion size (`CONVERT_MAX_BYTES`) | 4,000,000 bytes |
+| Function time limits | Speech and conversion up to 300 s, previews and translation 60 s (needs Fluid compute, the default for new projects; enable it under **Settings → Functions** on older ones) |
+
+Things to know for a public demo: rate limits are kept in memory per function instance, and every visitor shares Microsoft's and Google's free endpoints, which may slow down or refuse requests from busy data-center addresses. Set `SITE_URL` if you add a custom domain.
 
 ## Scripts
 
@@ -105,7 +127,7 @@ Everything works without configuration. To change defaults, copy `.env.example` 
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | Browser tests (Playwright + axe accessibility scans). Uses installed Microsoft Edge on Windows; elsewhere run `npx playwright install chromium` once |
 | `npm run test:live` | End-to-end API checks against a running server (`BASE_URL=...`) |
-| `npm run voices:refresh` | Re-download the provider's voice list and rebuild the catalog |
+| `npm run voices:refresh` | Re-download the provider's voice list and rebuild the catalog (needs `python -m pip install -r requirements.txt`) |
 | `scripts/voice-qa/run_audit.py` | Voice quality audit (see docs/VOICE-QUALITY.md; needs its own venv: `pip install -r scripts/voice-qa/requirements.txt`, a GPU recommended) |
 | `node scripts/generate-brand-assets.mjs` | Regenerate favicon, social image and video cover |
 
@@ -119,10 +141,10 @@ Browser (React 19, Next.js App Router)
   ├─ Voice library (static catalog + /api/preview)
   └─ Generation engine: chunk → POST /api/tts ×N (3 in parallel) → join MP3
 Next.js route handlers (Node.js)
-  ├─ /api/tts        → scripts/edge_synth.py (edge-tts) | opt-in backup voice
-  ├─ /api/preview    → cached sample per voice (.cache/previews)
+  ├─ /api/tts        → Microsoft Edge read-aloud service over WebSocket | opt-in backup voice
+  ├─ /api/preview    → cached sample per voice (.cache/previews, or the temp dir on Vercel)
   ├─ /api/translate  → Google Translate (free endpoint) or LibreTranslate
-  ├─ /api/convert    → ffmpeg: M4A audio or MP4 video
+  ├─ /api/convert    → ffmpeg (system or bundled): M4A audio or MP4 video
   └─ /api/health     → what this installation supports
 ```
 
@@ -130,15 +152,16 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Testing
 
-All of the following were run on Windows 11 (Node 24, Python 3.14, Microsoft Edge, ffmpeg 9) on 2026-10-26, except the multi-part audio check (2026-10-25; the speech pipeline has not changed since). Commands and coverage: [docs/TESTING.md](docs/TESTING.md).
+All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) on 2026-10-26, with the server started without Python. Commands and coverage: [docs/TESTING.md](docs/TESTING.md).
 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
-| `npm test` (unit) | 115 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 51 passed |
+| `npm test` (unit, incl. the speech client against a mock service) | 138 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 52 passed |
 | `npm run test:live` (API against a running server, real speech/translation/ffmpeg) | 25 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
+| Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |
 | `npm audit` | 0 vulnerabilities |
 
 Automated tests cannot judge how natural a voice sounds; docs/TESTING.md includes a short listening protocol for that.
@@ -153,21 +176,22 @@ Automated tests cannot judge how natural a voice sounds; docs/TESTING.md include
 ## Security notes
 
 - Every API input is validated; voices must exist in the catalog; speed/pitch are range-checked.
-- Request bodies are capped (`/api/tts` 64 KB, `/api/translate` 256 KB, `/api/convert` 60 MB) and rate-limited.
+- Request bodies are capped (`/api/tts` 64 KB, `/api/translate` 256 KB, `/api/convert` 60 MB, 4 MB on Vercel) and rate-limited.
 - **Cross-site protection:** requests that browsers mark as coming from another website (`Sec-Fetch-Site`, `Origin`) are refused with 403, so a web page you visit cannot use your local server.
-- **Proxy headers are not trusted by default:** without `TRUST_PROXY=true`, `X-Forwarded-For` is ignored (it could be forged to dodge rate limits) and all callers share one budget. Behind a reverse proxy that sets these headers, enable `TRUST_PROXY` for per-client limits.
-- Python and ffmpeg run with argument arrays (never a shell), with timeouts, concurrency caps and cancellation.
+- **Proxy headers are not trusted by default:** without `TRUST_PROXY=true`, `X-Forwarded-For` is ignored (it could be forged to dodge rate limits) and all callers share one budget. Behind a reverse proxy that sets these headers, enable `TRUST_PROXY` for per-client limits (on Vercel this is the default).
+- ffmpeg runs with argument arrays (never a shell), with timeouts, concurrency caps and cancellation. Speech sessions are capped too, fail after 45 s without data, and close when the request is cancelled.
 - `/api/convert` only accepts MP3 data; uploaded documents never reach the server.
 - PDF and OCR work have size, page-count and per-page time limits (50 MB, 500 pages per extraction, 50 pages per OCR run).
 - The rate limiter is in memory (bounded): suitable for one local or single-instance deployment; use a shared store for several instances.
 
 ## Limitations
 
-- **Free, keyless endpoints.** Speech uses Microsoft Edge's read-aloud service through `edge-tts`; translation uses Google Translate's web endpoint. They are not official, paid APIs: they can be slow, rate-limited, or change without notice. For a public, high-traffic deployment, use an official provider.
+- **Free, keyless endpoints.** Speech uses Microsoft Edge's read-aloud service (the protocol documented by the edge-tts project, implemented here in Node.js); its connection token changes when Microsoft updates Edge, and the app then needs an update too; translation uses Google Translate's web endpoint. They are not official, paid APIs: they can be slow, rate-limited, or change without notice. For a public, high-traffic deployment, use an official provider.
 - **Voices are synthetic** and translations are machine-generated; neither is guaranteed to be perfect.
 - **Arabic regional voices** add an accent; they do not convert Modern Standard Arabic into a dialect. Only two voices in the catalog are tagged by the provider as dialect voices (Liaoning and Shaanxi Mandarin).
 - **Coverage** is what the provider offers today: 322 voices, 75 languages (checked against the live list on 2026-10-25; no voices were added or removed upstream). The 12 multilingual voices can read many more languages, with varying quality.
 - **OCR** ships with Arabic and English language data only. Accuracy depends on scan quality; recognized text should be proofread. It runs at a few seconds per page on a typical laptop.
+- **On Vercel**, conversion to M4A/MP4 is limited to about 11 minutes of audio, and rate limits are per function instance. See [Deploying on Vercel](#deploying-on-vercel).
 - **Backup voice** (opt-in) speaks with a single generic voice per language and ignores speed and pitch.
 - **Development tooling:** ESLint stays on 9.x (in upstream maintenance) because plugins bundled with Next.js 16's lint config (`import`, `jsx-a11y`, `react`) do not yet support ESLint 10. It is a development-only tool with no known vulnerability.
 
@@ -177,10 +201,10 @@ Automated tests cannot judge how natural a voice sounds; docs/TESTING.md include
 |---|---|
 | `python` is not recognised | Reinstall Python and tick **Add python.exe to PATH**, or use `py server.py` |
 | `Node.js is not installed` | Install the LTS version from nodejs.org and open a new terminal |
-| “Speech engine isn't installed” banner | Run `python server.py` (it installs `edge-tts`), or `python -m pip install -r requirements.txt` |
-| M4A/MP4 buttons are disabled | Install ffmpeg and restart |
+| M4A/MP4 buttons are disabled | Run `npm install` again (it downloads ffmpeg), or install ffmpeg and restart |
+| “Too long to convert on this server” (Vercel) | Vercel accepts uploads up to 4.5 MB (about 11 minutes of MP3). Download the MP3, or run the app locally |
 | Port 3000 is busy | The launcher picks the next free port automatically, or use `--port 8080` |
-| “The speech service didn't respond” | Check your internet connection and press **Retry**; finished parts are kept |
+| “The speech service didn't respond” | Check your internet connection and press **Retry**; finished parts are kept. Microsoft's free service sometimes slows down or drops connections under load |
 | Strange characters after importing a TXT | Choose another encoding in the file bar above the editor |
 | PDF import or OCR does nothing after a manual install | Run `npm install` (or `node scripts/copy-vendor-assets.mjs`) to copy the engine files into `public/` |
 | API calls return 403 behind a reverse proxy | Set `TRUST_PROXY=true` so the public host name from `X-Forwarded-Host` is used |
@@ -195,4 +219,4 @@ Automated tests cannot judge how natural a voice sounds; docs/TESTING.md include
 
 Copyright © 2026 Yousif AL_Shamri. **All rights reserved.** This repository is public so the code can be viewed; it is **not** released under an open-source license. No permission is granted to copy, modify, distribute or use it commercially without prior written permission from the copyright holder. See [LICENSE](LICENSE).
 
-Third-party components keep their own licenses (Next.js, React, pdf.js, tesseract.js and its language data, edge-tts, flag-icons, Radix UI, and others).
+Third-party components keep their own licenses (Next.js, React, pdf.js, tesseract.js and its language data, ws, ffmpeg-static, flag-icons, Radix UI, and others). Notices for work this project builds on are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

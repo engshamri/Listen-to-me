@@ -1,14 +1,13 @@
 # Architecture
 
-Listen to me is a single Next.js 16 application (React 19, App Router, TypeScript, Tailwind CSS 4). Speech synthesis runs through a small Python script using the `edge-tts` package; ffmpeg handles optional format conversion. `server.py` is a launcher only: it does not serve requests itself.
+Listen to me is a single Next.js 16 application (React 19, App Router, TypeScript, Tailwind CSS 4). Speech synthesis talks to Microsoft Edge's read-aloud service over WebSocket from Node.js, so the server needs no Python and runs unchanged on serverless hosts such as Vercel; ffmpeg handles optional format conversion. `server.py` is a launcher only: it does not serve requests itself.
 
 ## Directory layout
 
 ```
 server.py                    Local launcher (checks, installs, builds, supervises Next.js)
 scripts/
-  edge_synth.py              One synthesis request → MP3 (exit codes classify failures)
-  save_voices.py             Refresh src/data/voices.json from the live provider list
+  save_voices.py             Refresh src/data/voices.json from the live provider list (Python, edge-tts)
   build-voice-catalog.mjs    Enrich voices (localized names, regions, flags) → voice-catalog.json
   generate-brand-assets.mjs  Favicon, social image, MP4 video cover
   copy-vendor-assets.mjs     Copies the pdf.js worker and the OCR engine (tesseract.js worker,
@@ -39,7 +38,8 @@ src/
     audio/                   MP3 parsing/duration, exclusive playback, file names
     translate/languages.ts   Target languages, localized labels
     server/                  Config, HTTP helpers, rate limiter, semaphore, process runner,
-                             Edge/backup synthesis, translation providers, ffmpeg, health
+                             speech service client (edge.ts) and its token (edge-drm.ts),
+                             backup voice, translation providers, ffmpeg, health
   data/
     voices.json              Raw provider voice list (322 voices)
     voice-catalog.json       Generated, enriched catalog used by client and server
@@ -70,8 +70,23 @@ tests/
 1. `splitIntoChunks` segments text with `Intl.Segmenter` (sentences, then words), preferring paragraph ends; `prepareForSpeech` adds pauses after unpunctuated lines.
 2. `runJob` sends up to three chunks at a time to `POST /api/tts`, keeping results by index. Transient failures retry with back-off; HTTP 429 waits for `Retry-After`.
 3. On a permanent failure, scheduling stops but finished chunks are kept. The user can **Retry** (only missing chunks are requested), **use the finished parts**, or **opt in to the backup voice** for parts that fail again.
-4. Cancel aborts all requests; the route handler sees `request.signal` abort and kills the Python process.
+4. Cancel aborts all requests; the route handler sees `request.signal` abort and closes its connection to the speech service.
 5. Chunks are joined into one MP3 (same codec settings throughout); duration is measured from the MP3 frames.
+
+## Speech service client
+
+`src/lib/server/edge.ts` implements the WebSocket protocol of Microsoft Edge's read-aloud service (the one the edge-tts project documents):
+
+1. The text is cleaned of control characters the service rejects, XML-escaped, and split into pieces of at most 4,096 bytes (at a line break or space, never inside a character or an entity).
+2. Each piece opens a connection to `speech.platform.bing.com` with the browser's origin and user agent, a random `muid` cookie and a `Sec-MS-GEC` token. `edge-drm.ts` derives the token from the current five-minute window: a SHA-256 and a 64-bit checksum over Microsoft's copyright line, the window in Windows file-time ticks and the public client token. Unit tests compare it with tokens produced by edge-tts.
+3. The client sends a `speech.config` message (48 kbit/s mono MP3) and the SSML, then collects binary `audio` frames until `turn.end`.
+4. Failures map to the API's error codes: a 403 handshake re-syncs the token clock with the server's `Date` header and retries once; a connection closed before `turn.end` is retryable; `turn.end` with no audio is `NO_AUDIO`; 45 s without any data is a stall (`TIMEOUT`); the whole request is capped by `TTS_TIMEOUT_SECONDS` (240).
+
+When Microsoft ships a new Edge version the token scheme can change; `CHROMIUM_FULL_VERSION` and the token code in `edge-drm.ts` are the places to update.
+
+## Running on Vercel
+
+Nothing in the request path needs Python or a writable project folder. With `VERCEL=1` the server trusts Vercel's forwarding headers, caches previews in the temp folder, uses the production domain for social links, and caps `/api/convert` uploads at 4,000,000 bytes (Vercel rejects request bodies over 4.5 MB). Conversions stream their response, which Vercel does not cap. `next.config.ts` keeps `ws` and `ffmpeg-static` as external packages and traces the ffmpeg binary and the video cover into the convert function. Routes declare `maxDuration` (speech and conversion 300 s, previews and translation 60 s); preview responses carry `s-maxage` so Vercel's CDN serves repeat requests.
 
 ## PDF import and OCR
 
@@ -89,8 +104,8 @@ tests/
 | Oversized requests | Streaming body reader with hard caps |
 | Abuse | Sliding-window rate limits (configurable). Forwarding headers are only trusted with `TRUST_PROXY=true`; otherwise all callers share one budget. The limiter tracks at most 10,000 keys |
 | Cross-site use | `crossSiteRejection`: requests a browser marks as coming from another site (`Sec-Fetch-Site` other than same-origin/none, or an `Origin` whose host differs from `Host`) get 403. Command-line clients send neither header and are allowed |
-| Resource exhaustion | Semaphores for Python (6) and ffmpeg (2); timeouts; cancellation |
-| Command injection | `spawn` with argument arrays, never a shell; text passed via temp file |
+| Resource exhaustion | Semaphores for speech sessions (6) and ffmpeg (2); idle and total timeouts; cancellation |
+| Command injection | ffmpeg via `spawn` with argument arrays, never a shell; speech text is XML-escaped inside SSML |
 | Temp files | `mkdtemp` per request (private), always removed in `finally` |
 | Path traversal | Preview cache file names come from catalog ids matching `[\w-]+` |
 | Non-audio uploads | `/api/convert` checks for MP3 frame sync / ID3 before ffmpeg |
