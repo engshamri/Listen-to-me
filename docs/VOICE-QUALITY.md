@@ -191,9 +191,13 @@ One re-run coincided with a DNS outage (`Cannot connect to host speech.platform.
 ## Coverage: sources considered
 
 - **Microsoft Edge neural voices (current provider):** all 322 voices available through the free endpoint are in the catalog; the list was compared with the live service and matches exactly.
-- **Azure AI Speech:** has more voices and styles but requires a paid subscription key, which this project avoids.
-- **Google Translate speech (backup voice):** one generic voice per language, no speed/pitch; clearly less natural, so it stays an opt-in fallback only.
-- **Local open-source engines (e.g. Piper):** free and offline, but noticeably less natural than the neural voices already offered and would add large model downloads; not added.
+Reviewed again on 2026-10-26 for more Arabic voices. The owner's rule: free, and no API key or account of any kind.
+
+- **Google Translate speech (keyless): added as the Google Arabic voice** (`google-ar`, Standard Arabic, under *More Arabic voices*). It was already the opt-in backup voice. Whisper large-v3 recovered 95.3 % of a 43-word Arabic paragraph in order, and it answered every request from the production server (Vercel). It has one voice per language, ignores speed and pitch, and reports no word timings, so read-along times are estimated within each phrase of at most 180 characters.
+- **Google Cloud Text-to-Speech** (38 Arabic voices, 30 of them "Chirp 3 HD") and **Azure AI Speech** (the same Microsoft voices): official and reliable, but both need an account and an API key, and Google needs billing. Not added (owner's rule).
+- **Open models that need a GPU server** (not free to host): SILMA TTS (Apache-2.0, Standard Arabic, voice cloning only) and Habibi-TTS (F5-TTS; Apache-2.0 for its Egyptian, Iraqi, Algerian, Moroccan and Standard Arabic models, non-commercial for the unified, Saudi and Emirati models). Not added.
+- **Models small enough for the browser:** `tts_arabic` (its multi-speaker models and Arabic phonetiser are non-commercial), Meta MMS-TTS Arabic (CC BY-NC 4.0), and Piper's Arabic voice (training-data licence unverified; its phonemizer is GPL). Not added, because the site accepts donations and the licences are not clear for that.
+- **Unofficial copies of paid voices** (sites that proxy Amazon Polly and similar): no right to use them. Not added.
 
 ## All voices
 

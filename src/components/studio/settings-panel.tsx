@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 interface SettingsPanelProps {
   settings: SpeechSettings;
   onChange: (patch: Partial<SpeechSettings>) => void;
+  /** The selected voice ignores speed and pitch (Google): the sliders are disabled with an explanation. */
+  fixedSpeedAndPitch?: boolean;
   className?: string;
 }
 
@@ -55,7 +57,7 @@ function SettingRow({
   );
 }
 
-export function SettingsPanel({ settings, onChange, className }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onChange, fixedSpeedAndPitch = false, className }: SettingsPanelProps) {
   const { t, fmt } = useI18n();
   const pausesId = useId();
   const speedText = t("units.speed", { n: fmt.number(settings.speed, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) });
@@ -75,7 +77,7 @@ export function SettingsPanel({ settings, onChange, className }: SettingsPanelPr
           resetLabel={t("settings.reset", { setting: t("settings.speed") })}
           ends={[t("settings.slower"), t("settings.faster")]}
         >
-          <Slider value={[settings.speed]} min={0.5} max={2} step={0.05} onValueChange={([v]) => onChange({ speed: Math.round(v * 100) / 100 })} thumbLabel={t("settings.speed")} valueText={speedText} />
+          <Slider disabled={fixedSpeedAndPitch} value={[settings.speed]} min={0.5} max={2} step={0.05} onValueChange={([v]) => onChange({ speed: Math.round(v * 100) / 100 })} thumbLabel={t("settings.speed")} valueText={speedText} />
         </SettingRow>
         <SettingRow
           label={t("settings.pitch")}
@@ -85,9 +87,14 @@ export function SettingsPanel({ settings, onChange, className }: SettingsPanelPr
           resetLabel={t("settings.reset", { setting: t("settings.pitch") })}
           ends={[t("settings.lower"), t("settings.higher")]}
         >
-          <Slider value={[settings.pitch]} min={-20} max={20} step={1} onValueChange={([v]) => onChange({ pitch: v })} thumbLabel={t("settings.pitch")} valueText={pitchText} />
+          <Slider disabled={fixedSpeedAndPitch} value={[settings.pitch]} min={-20} max={20} step={1} onValueChange={([v]) => onChange({ pitch: v })} thumbLabel={t("settings.pitch")} valueText={pitchText} />
         </SettingRow>
       </div>
+      {fixedSpeedAndPitch && (
+        <p role="note" className="text-muted-foreground -mt-2 text-[13px] leading-relaxed">
+          {t("settings.fixedVoice")}
+        </p>
+      )}
       <div className="flex items-start justify-between gap-4 border-t pt-4">
         <div>
           <label htmlFor={pausesId} className="text-sm font-medium">

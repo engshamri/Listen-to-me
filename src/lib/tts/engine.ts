@@ -39,6 +39,8 @@ export interface Job {
   audio: (ArrayBuffer | null)[];
   /** Word timings per chunk, relative to that chunk's audio; null when none were sent. */
   words: (SpeechWord[] | null)[];
+  /** Whether a chunk's word times were estimated by the server (Google) rather than reported by the voice. */
+  estimated: boolean[];
   engines: (EngineKind | null)[];
   allowBackup: boolean;
 }
@@ -65,7 +67,7 @@ class ChunkError extends Error {
 }
 
 export function createJob(settings: JobSettings, chunks: string[]): Job {
-  return { settings, chunks, audio: chunks.map(() => null), words: chunks.map(() => null), engines: chunks.map(() => null), allowBackup: false };
+  return { settings, chunks, audio: chunks.map(() => null), words: chunks.map(() => null), estimated: chunks.map(() => false), engines: chunks.map(() => null), allowBackup: false };
 }
 
 export function completedCount(job: Job): number {
@@ -95,17 +97,19 @@ const sleep = (ms: number, signal: AbortSignal) =>
 interface ChunkAudio {
   audio: ArrayBuffer;
   words: SpeechWord[] | null;
+  estimated: boolean;
 }
 
 /** The server answers with plain MP3, or with multipart "audio" + "words" when timings were requested. */
 async function readSpeech(res: Response): Promise<ChunkAudio> {
-  if (!(res.headers.get("Content-Type") ?? "").startsWith("multipart/form-data")) return { audio: await res.arrayBuffer(), words: null };
+  if (!(res.headers.get("Content-Type") ?? "").startsWith("multipart/form-data")) return { audio: await res.arrayBuffer(), words: null, estimated: false };
   const form = await res.formData();
   const audio = form.get("audio");
   const words = form.get("words");
   return {
     audio: audio instanceof Blob ? await audio.arrayBuffer() : new ArrayBuffer(0),
     words: typeof words === "string" ? (JSON.parse(words) as SpeechWord[]) : null,
+    estimated: form.get("timing") === "estimated",
   };
 }
 
@@ -181,6 +185,7 @@ export async function runJob(job: Job, { signal, concurrency = 3, maxAttempts = 
         const speech = await requestChunk(job.chunks[index], job.settings, "edge", signal);
         job.audio[index] = speech.audio;
         job.words[index] = speech.words;
+        job.estimated[index] = speech.estimated;
         job.engines[index] = "edge";
         return;
       } catch (e) {
@@ -202,6 +207,7 @@ export async function runJob(job: Job, { signal, concurrency = 3, maxAttempts = 
             const speech = await requestChunk(job.chunks[index], job.settings, "backup", signal);
             job.audio[index] = speech.audio;
             job.words[index] = speech.words;
+            job.estimated[index] = speech.estimated;
             job.engines[index] = "backup";
             return;
           } catch (backupErr) {

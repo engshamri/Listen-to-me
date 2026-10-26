@@ -64,13 +64,17 @@ describe("i18n", () => {
 });
 
 describe("voice catalog", () => {
-  it("has the provider catalog minus the voices the audit disabled and the duplicates of multilingual voices", () => {
+  it("has the provider catalog minus the voices the audit disabled and the duplicates of multilingual voices, plus Google Arabic", () => {
     const disabled = Object.entries(quality.voices as Record<string, { status?: string }>)
       .filter(([, q]) => q.status === "disabled")
       .map(([id]) => id);
     const duplicates = (catalog as Voice[]).filter((v) => v.duplicateOf);
     expect(duplicates.map((v) => v.id).sort()).toEqual(["en-US-AndrewNeural", "en-US-AvaNeural", "en-US-BrianNeural", "en-US-EmmaNeural"]);
-    expect(VOICES.length).toBe(rawVoices.length - disabled.length - duplicates.length);
+    // Plus the second source: Google's Arabic voice.
+    const google = VOICES.filter((v) => v.provider === "google");
+    expect(google.map((v) => v.id)).toEqual(["google-ar"]);
+    expect(google[0]).toMatchObject({ lang: "ar", country: "", name: "Google", nameAr: "جوجل" });
+    expect(VOICES.length).toBe(rawVoices.length - disabled.length - duplicates.length + google.length);
     for (const id of disabled) expect(VOICES.some((v) => v.id === id), id).toBe(false);
     for (const d of duplicates) {
       // Hidden, replaced by an offered multilingual voice with the same name and language.

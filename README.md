@@ -1,6 +1,6 @@
 # Listen to me · اسمعني
 
-**Multilingual text-to-speech and translation, running on your own computer.** Type, paste or upload text (TXT, PDF, or scanned PDF through built-in OCR), translate it if you like, pick one of 315 neural voices in 75 languages, and download natural-sounding speech as MP3, M4A, or a real MP4 video.
+**Multilingual text-to-speech and translation, running on your own computer.** Type, paste or upload text (TXT, PDF, or scanned PDF through built-in OCR), translate it if you like, pick one of 316 voices in 75 languages, and download natural-sounding speech as MP3, M4A, or a real MP4 video.
 
 Created and maintained by **Yousif AL_Shamri** · GitHub [@engshamri](https://github.com/engshamri) · Instagram [@mmmmn](https://www.instagram.com/mmmmn/) · [Support the project](#support-the-project)
 
@@ -37,6 +37,7 @@ Working and tested on Windows 11 (see [Testing](#testing)). Run it on your own c
 | **Scanned PDFs (OCR)** | Pages without a text layer are detected and **never dropped silently**: you choose to recognize them or import without them · Tesseract OCR (Arabic, English, or both) runs **on your device** in a web worker; the engine and language data are served by this app, so no document or request goes to a third party · per-page progress, Stop, page limits and timeouts · pages with low recognition confidence are named so you can proofread them |
 | **Translation** | Searchable list of 100+ target languages · automatic source detection with manual override · paragraph structure preserved · progress for long texts, cancel, Undo / restore original · suggests a matching voice afterwards |
 | **Voice browser** | Opens on all language groups · hierarchical, flag-based navigation: language group (Arabic, English, European, Asian, African, Other) → country cards with SVG flags (Arabic countries grouped by accent region) → voice cards with language/accent, characteristics, preview, favorite and a clear selected state · breadcrumb and Back keep your place · search across the whole library that tolerates Arabic spelling variants (أ/ا, ة/ه, ى/ي, tashkeel) and demonyms (“Iraqi”, “عراقي”) · gender, style and multilingual filters · full-screen on phones |
+| **Google Arabic voice** | A second free source, with no key and no account: Google's Standard Arabic voice, listed under *More Arabic voices* · it reads at a fixed speed and pitch (the sliders are disabled with an explanation) · read-along timing is estimated within each phrase and marked as approximate · the privacy note names Google when it is selected |
 | **Favorites** | Heart any voice; favorites appear as one-click chips next to the selected voice and in a Favorites view; saved in the browser, synced across tabs |
 | **Voice quality** | All 322 voices audited with audio measurements, Whisper large-v3 speech recognition against same-language peers, and reliability tests: 307 verified, 10 audio-checked (languages the recognizer cannot evaluate), 2 kept with a documented flag, 3 disabled for failing most requests; 4 Inuktitut voices that never worked were repaired; 4 English-only voices that duplicated multilingual voices of the same name (Ava, Emma, Andrew, Brian) are hidden, and earlier choices of them move to the multilingual twin; verified voices carry a “Clarity verified” badge. See [docs/VOICE-QUALITY.md](docs/VOICE-QUALITY.md) |
 | **Speech** | Language-aware sentence splitting (never cuts a word) · paragraph-aware chunking · pauses after headings · speed and pitch · 3 parts in parallel with ordered assembly · retries with back-off · resume from a failed part without regenerating finished parts · real cancellation (the server kills the synthesis process) |
@@ -163,9 +164,9 @@ All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
-| `npm test` (unit, incl. the speech client against a mock service, read-along alignment, the library store, chapter detection, the notes export and the donation address/QR checks) | 183 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, library, chapters, bookmarks, listening while generating, OCR) | 94 passed |
-| `npm run test:live` (API against a running server, real speech/translation/ffmpeg, word timings) | 26 passed |
+| `npm test` (unit, incl. the speech client against a mock service, read-along alignment, the library store, chapter detection, the notes export, the Google voice splitting and the donation address/QR checks) | 186 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, library, chapters, bookmarks, listening while generating, the Google voice, OCR) | 98 passed |
+| `npm run test:live` (API against a running server, real speech/translation/ffmpeg, word timings, the Google voice) | 27 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |
 | `npm audit` | 0 vulnerabilities |
@@ -176,7 +177,7 @@ A GitHub Actions workflow (`.github/workflows/production-check.yml`) runs a shor
 
 ## Privacy
 
-- To create audio, text is sent to Microsoft's Edge text-to-speech service; translation sends text to Google Translate (or your LibreTranslate server). The interface says so next to the Generate button and in **About → Privacy**.
+- To create audio, text is sent to Microsoft's Edge text-to-speech service (or to Google's speech service for the Google voice); translation sends text to Google Translate (or your LibreTranslate server). The interface says so next to the Generate button and in **About → Privacy**.
 - TXT and PDF files are read in the browser and never uploaded. OCR also runs in the browser.
 - The server keeps no copies of text or audio: each request uses a private temporary folder that is deleted when it finishes. Only voice previews (fixed sample sentences) are cached.
 - Drafts, settings, theme and language live in your browser (local storage / cookies). Recordings you save to **My library** are stored in your browser's IndexedDB; clearing the site's data in the browser deletes them.
@@ -197,7 +198,7 @@ A GitHub Actions workflow (`.github/workflows/production-check.yml`) runs a shor
 - **Free, keyless endpoints.** Speech uses Microsoft Edge's read-aloud service (the protocol documented by the edge-tts project, implemented here in Node.js); its connection token changes when Microsoft updates Edge, and the app then needs an update too; translation uses Google Translate's web endpoint. They are not official, paid APIs: they can be slow, rate-limited, or change without notice. For a public, high-traffic deployment, use an official provider.
 - **Voices are synthetic** and translations are machine-generated; neither is guaranteed to be perfect.
 - **Arabic regional voices** add an accent; they do not convert Modern Standard Arabic into a dialect. Only two voices in the catalog are tagged by the provider as dialect voices (Liaoning and Shaanxi Mandarin).
-- **Coverage** is what the provider offers today: 322 voices, 75 languages, of which 315 are offered (checked against the live list on 2026-10-25; no voices were added or removed upstream). The 12 multilingual voices can read many more languages, with varying quality.
+- **Coverage** is what the providers offer today: Microsoft's 322 voices in 75 languages, of which 315 are offered, plus Google's Arabic voice. No other source that is free and needs no key or account was found that adds Arabic voices; see [docs/VOICE-QUALITY.md](docs/VOICE-QUALITY.md#coverage-sources-considered) (checked against the live list on 2026-10-25; no voices were added or removed upstream). The 12 multilingual voices can read many more languages, with varying quality.
 - **OCR** ships with Arabic and English language data only. Accuracy depends on scan quality; recognized text should be proofread. It runs at a few seconds per page on a typical laptop.
 - **On Vercel**, conversion to M4A/MP4 is limited to about 11 minutes of audio, and rate limits are per function instance. See [Deploying on Vercel](#deploying-on-vercel).
 - **Backup voice** (opt-in) speaks with a single generic voice per language and ignores speed and pitch.

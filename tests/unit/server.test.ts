@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { downloadName } from "@/lib/audio/filename";
 import { countMp3Frames, looksLikeMp3, mp3DurationSeconds } from "@/lib/audio/mp3";
-import { splitForBackup } from "@/lib/server/backup-tts";
+import { estimatePieceWords, splitForBackup } from "@/lib/server/backup-tts";
 import { BodyTooLargeError, clientKey, crossSiteRejection, readBodyLimited } from "@/lib/server/http";
 import { rateLimit, resetRateLimits, trackedKeys } from "@/lib/server/rate-limit";
 import { Semaphore } from "@/lib/server/semaphore";
@@ -119,12 +119,35 @@ describe("request body limits", () => {
   });
 });
 
-describe("backup voice splitting", () => {
+describe("Google voice splitting and timing", () => {
   it("splits at spaces and never loses words", () => {
     const words = Array.from({ length: 200 }, (_, i) => `كلمة${i}`);
-    const pieces = splitForBackup(words.join(" "));
+    const pieces = splitForBackup(words.join(" "), "ar");
     for (const p of pieces) expect(p.length).toBeLessThanOrEqual(180);
     expect(pieces.join(" ").split(" ")).toEqual(words);
+  });
+
+  it("ends pieces at sentence ends, then at commas, rather than mid-clause", () => {
+    const s1 = "تُعدّ اللغة العربية من أكثر اللغات انتشاراً في العالم، إذ يتحدث بها أكثر من أربعمئة مليون إنسان.";
+    const s2 = "وهي لغة القرآن الكريم، ولغة رسمية في أكثر من عشرين دولة، كما أنها إحدى اللغات الست الرسمية في الأمم المتحدة.";
+    const s3 = "تتميز العربية بثراء مفرداتها.";
+    const pieces = splitForBackup(`${s1} ${s2} ${s3}`, "ar");
+    // s1 + s2 would exceed 180 characters, so each sentence starts a piece; s3 fits after s2.
+    expect(pieces).toEqual([s1, `${s2} ${s3}`]);
+    const long = Array.from({ length: 6 }, (_, i) => `هذا هو الجزء رقم ${i + 1} من جملة طويلة جداً تمتد عبر عدة فواصل`).join("، ") + ".";
+    for (const p of splitForBackup(long, "ar")) {
+      expect(p.length).toBeLessThanOrEqual(180);
+      expect(p).toMatch(/[،.]$/u);
+    }
+  });
+
+  it("estimates word times in proportion to their length, within the piece", () => {
+    const words = estimatePieceWords("one three", 10, 2);
+    expect(words.map((w) => w.text)).toEqual(["one", "three"]);
+    expect(words[0].start).toBe(10);
+    expect(words[0].end).toBeCloseTo(10 + (2 * 4) / 10);
+    expect(words[1].start).toBeCloseTo(words[0].end);
+    expect(words[1].end).toBeCloseTo(12);
   });
 });
 

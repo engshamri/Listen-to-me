@@ -77,6 +77,12 @@ describe("timeline for the joined audio", () => {
     expect(t.sentences[1].end).toBeCloseTo(t.sentences[2].start, 5);
   });
 
+  it("uses word times the server estimated (Google voice), but marks the timeline approximate", () => {
+    const t = buildTimeline({ text, displayChunks, audio: [mp3(50), mp3(25)], words: [chunk1, chunk2], estimated: [false, true], locale: "en" });
+    expect(t.approximate).toBe(true);
+    expect(t.words[5].start).toBeCloseTo(1.2 + 0.05, 5);
+  });
+
   it("covers only the finished leading parts of a partial result", () => {
     const t = buildTimeline({ text, displayChunks, audio: [mp3(50)], words: [chunk1], locale: "en" });
     expect(t.text).toBe("One two three. Four five.");

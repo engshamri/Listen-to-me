@@ -103,6 +103,15 @@ When a text has several parts, "Listen now" appears as soon as the first part is
 - Measured with real speech, a switch landed inside a 0.44 s pause between sentences and played on with a 0.08 s stall.
 - **Why not MediaSource?** Streaming through MediaSource would avoid the switch, but browsers cap buffered audio at about 12 MB (around 30 minutes at 48 kbit/s), which long lectures exceed. The blob approach works the same in every browser, including iPhone Safari.
 
+## Google voice
+
+`google-ar` (provider `google`) uses Google Translate's free speech endpoint through `lib/server/backup-tts.ts`, the same code as the opt-in backup voice.
+
+- **Splitting:** the endpoint reads at most about 200 characters per request. Text is split into pieces of at most 180 characters, ending at a sentence end when possible, else after a comma or semicolon, else between words. The voice pauses at the end of each request, so mid-clause cuts would sound unnatural.
+- **Timings:** the pieces' MP3 frames are joined. The endpoint reports no word timings, so each word gets a time in proportion to its length within its piece (`estimatePieceWords`). The multipart response says `timing: estimated`, and the read-along timeline is marked approximate.
+- **Speed and pitch:** the endpoint ignores both. The settings sliders are disabled for this voice, and the result records normal speed and pitch.
+- **Failures:** there is no fallback of its own (the backup voice is the same service), so failures report `fallbackAvailable: false`.
+
 ## Speech service client
 
 `src/lib/server/edge.ts` implements the WebSocket protocol of Microsoft Edge's read-aloud service (the one the edge-tts project documents):

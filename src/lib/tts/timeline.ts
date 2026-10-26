@@ -28,10 +28,12 @@ export interface TimelineInput {
   audio: ArrayBuffer[];
   /** Word timings per chunk; null or empty when the voice sent none. */
   words: (SpeechWord[] | null)[];
+  /** Chunks whose word times were estimated by the server; the timeline is then marked approximate. */
+  estimated?: boolean[];
   locale: string;
 }
 
-export function buildTimeline({ text, displayChunks, audio, words, locale }: TimelineInput): Timeline {
+export function buildTimeline({ text, displayChunks, audio, words, estimated, locale }: TimelineInput): Timeline {
   const count = audio.length;
   if (!count) return EMPTY_TIMELINE;
   const starts = locateChunks(text, displayChunks);
@@ -41,6 +43,7 @@ export function buildTimeline({ text, displayChunks, audio, words, locale }: Tim
   let offset = 0;
   let approximate = false;
   for (let i = 0; i < count; i++) {
+    if (estimated?.[i]) approximate = true;
     const duration = mp3DurationSeconds(new Uint8Array(audio[i]));
     let spans = words[i]?.length ? alignWords(displayChunks[i], words[i]!, starts[i]) : [];
     if (!spans.length) {

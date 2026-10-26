@@ -139,6 +139,7 @@ function StudioInner() {
         displayChunks: active.displayChunks.slice(0, upTo),
         audio: job.audio.slice(0, upTo).filter((a): a is ArrayBuffer => a !== null),
         words: job.words.slice(0, upTo),
+        estimated: job.estimated.slice(0, upTo),
         locale: active.locale,
       });
       const result: AudioResult = {
@@ -227,8 +228,11 @@ function StudioInner() {
     const snapshot = (chosen && chaptersText(full, detectChapters(full), chosen)) || full;
     const displayChunks = splitIntoChunks(snapshot, { locale: voice.lang });
     const chunks = displayChunks.map((c) => prepareForSpeech(c, { lang: voice.lang, pauseAtLineBreaks: settings.pauses }));
-    const job = createJob({ voiceId: voice.id, rate: rateString(settings.speed), pitch: pitchString(settings.pitch) }, chunks);
-    const active = { job, voiceId: voice.id, speed: settings.speed, pitch: settings.pitch, text: snapshot, displayChunks, locale: voice.lang };
+    // Google voices always read at normal speed and pitch; record what was actually used.
+    const speed = voice.provider === "google" ? 1 : settings.speed;
+    const pitch = voice.provider === "google" ? 0 : settings.pitch;
+    const job = createJob({ voiceId: voice.id, rate: rateString(speed), pitch: pitchString(pitch) }, chunks);
+    const active = { job, voiceId: voice.id, speed, pitch, text: snapshot, displayChunks, locale: voice.lang };
     activeRef.current = active;
     void run(active);
   }, [gen.phase, disabledReason, voice, settings, run, textRef, chosenRef]);
@@ -279,7 +283,7 @@ function StudioInner() {
             onBrowse={() => openBrowser()}
             onBrowseFavorites={() => openBrowser({ nav: { level: "favorites" }, filters: EMPTY_BROWSER_FILTERS })}
           />
-          <SettingsPanel settings={settings} onChange={updateSettings} />
+          <SettingsPanel settings={settings} onChange={updateSettings} fixedSpeedAndPitch={voice.provider === "google"} />
         </div>
         {/* After voice and settings in reading order; shown under the editor on large screens. */}
         <GeneratePanel
@@ -288,6 +292,7 @@ function StudioInner() {
           elapsed={elapsed}
           disabledReason={disabledReason}
           backupEnabled={health.backupVoice}
+          voiceProvider={voice.provider}
           onGenerate={generate}
           onCancel={() => ctrlRef.current?.abort()}
           onListenNow={() => activeRef.current && setLive(activeRef.current)}

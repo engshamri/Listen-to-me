@@ -20,6 +20,8 @@ interface GeneratePanelProps {
   elapsed: number;
   disabledReason: string | null;
   backupEnabled: boolean;
+  /** Which service receives the text, for the privacy note. */
+  voiceProvider: "edge" | "google";
   onGenerate: () => void;
   onCancel: () => void;
   /** Opens reading mode on the parts that are ready while the rest generate. */
@@ -158,7 +160,7 @@ export function GeneratePanel(props: GeneratePanelProps) {
               <p id="generate-privacy" className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-[12px] leading-relaxed">
                 <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
                 <span>
-                  {t("generate.privacy")}{" "}
+                  {t(props.voiceProvider === "google" ? "generate.privacyGoogle" : "generate.privacy")}{" "}
                   <button type="button" className="text-primary font-medium underline-offset-4 hover:underline" onClick={() => openAbout("privacy")}>
                     {t("generate.learnMore")}
                   </button>

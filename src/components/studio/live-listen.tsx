@@ -46,6 +46,7 @@ export function LiveListen({ source, generating, onClose }: { source: LiveSource
         displayChunks: source.displayChunks.slice(0, ready),
         audio: parts,
         words: job.words.slice(0, ready),
+        estimated: job.estimated.slice(0, ready),
         locale: source.locale,
       }),
     [source, job, ready, parts],

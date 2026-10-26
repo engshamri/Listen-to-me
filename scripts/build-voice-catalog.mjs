@@ -111,6 +111,31 @@ for (const v of voices) {
 const duplicates = voices.filter((v) => v.duplicateOf);
 if (duplicates.length) console.log(`hidden as duplicates of a multilingual twin: ${duplicates.map((v) => `${v.id} → ${v.duplicateOf}`).join(", ")}`);
 
+// A second free source: Google Translate's speech endpoint (no key, no account). It has one
+// generic voice per language; it is offered for Arabic, where visitors most want more choice.
+// It has no country, so the voice browser lists it under "More Arabic voices".
+const GOOGLE_VOICES = [{ lang: "ar", gender: "Female", name: "Google", nameAr: "جوجل", variant: { en: "Standard Arabic", ar: "الفصحى" } }];
+for (const g of GOOGLE_VOICES) {
+  voices.push({
+    id: `google-${g.lang}`,
+    provider: "google",
+    locale: g.lang,
+    lang: g.lang,
+    country: "",
+    gender: g.gender,
+    name: g.name,
+    nameAr: g.nameAr,
+    languageName: { en: titleCase(langNames.en.of(g.lang) ?? g.lang), ar: langNames.ar.of(g.lang) ?? g.lang },
+    countryName: null,
+    variant: g.variant,
+    region: null,
+    multilingual: false,
+    personalities: [],
+    categories: [],
+    available: true,
+  });
+}
+
 const missingArabic = voices.filter((v) => v.lang === "ar" && v.nameAr === v.name).map((v) => v.id);
 if (missingArabic.length) {
   console.error("Arabic voices without an Arabic personal name:", missingArabic.join(", "));

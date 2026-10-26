@@ -349,6 +349,8 @@ export function VoiceBrowser({ open, onOpenChange, selectedId, onSelect, nav, on
         ))}
       </ul>
     );
+    // Arabic voices without a country (Google's Standard Arabic voice).
+    const moreArabic = nav.category === "arabic" ? pool.filter((v) => v.lang === "ar" && !v.country) : [];
     const multilingual = nav.category === "arabic" ? multilingualVerifiedFor("ar").map((id) => getVoice(id)).filter((v): v is Voice => Boolean(v) && pool.includes(v!)) : [];
     body = (
       <div className="space-y-6">
@@ -362,6 +364,13 @@ export function VoiceBrowser({ open, onOpenChange, selectedId, onSelect, nav, on
               </section>
             ))
           : grid(countries)}
+        {moreArabic.length > 0 && (
+          <section aria-label={t("voices.moreArabic")} className="border-t pt-5">
+            <h4 className="font-semibold">{t("voices.moreArabic")}</h4>
+            <p className="text-muted-foreground mb-3 text-[13px]">{t("voices.moreArabicNote")}</p>
+            <VoiceGrid voices={moreArabic} selectedId={selectedId} onSelect={select} />
+          </section>
+        )}
         {multilingual.length > 0 && (
           <section aria-label={t("voices.multilingualFor", { language: languageLabel("ar", locale) })} className="border-t pt-5">
             <h4 className="font-semibold">{t("voices.multilingualFor", { language: languageLabel("ar", locale) })}</h4>

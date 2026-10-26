@@ -11,7 +11,8 @@ export interface LocalizedName {
 
 export interface Voice {
   id: string;
-  provider: "edge";
+  /** "edge": Microsoft's read-aloud service; "google": Google Translate's speech endpoint (one voice per language, no word timings, fixed speed and pitch). */
+  provider: "edge" | "google";
   locale: string;
   lang: string;
   country: string;

@@ -74,7 +74,7 @@ const PREVIEW_FLAGS: Record<LanguageCategory, string[]> = {
 export function summarizeCategories(voices: Voice[]): CategorySummary[] {
   return LANGUAGE_CATEGORIES.map((id) => {
     const inCat = voices.filter((v) => categoryOf(v) === id);
-    const countries = new Set(inCat.map((v) => v.country));
+    const countries = new Set(inCat.map((v) => v.country).filter(Boolean));
     return {
       id,
       countries: countries.size,

@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
 import { serverConfig } from "@/lib/server/config";
+import { synthesizeGoogle } from "@/lib/server/backup-tts";
 import { synthesizeEdge } from "@/lib/server/edge";
 import { apiError, clientKey, crossSiteRejection } from "@/lib/server/http";
 import { rateLimit } from "@/lib/server/rate-limit";
@@ -25,7 +26,7 @@ async function sampleText(voice: Voice): Promise<string> {
 
 async function generate(voice: Voice, file: string): Promise<Buffer> {
   const text = await sampleText(voice);
-  const { audio } = await synthesizeEdge({ text, voice: voice.id, rate: "+0%", pitch: "+0Hz" });
+  const { audio } = voice.provider === "google" ? await synthesizeGoogle(text, voice.lang) : await synthesizeEdge({ text, voice: voice.id, rate: "+0%", pitch: "+0Hz" });
   // Caching is best effort: a read-only or full disk must not cost the visitor the preview.
   try {
     await mkdir(path.dirname(file), { recursive: true });

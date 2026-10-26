@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { synthesizeBackup } from "@/lib/server/backup-tts";
+import { synthesizeGoogle } from "@/lib/server/backup-tts";
 import { LIMITS, serverConfig } from "@/lib/server/config";
 import { EdgeError, synthesizeEdge } from "@/lib/server/edge";
 import type { SpeechWord } from "@/lib/text/align";
@@ -28,13 +28,15 @@ const Body = z.object({
   marks: z.boolean().default(false),
 });
 
-function audio(buf: Buffer, engine: string, words?: SpeechWord[]) {
+/** `estimated`: the word times were estimated (Google), not reported by the voice. */
+function audio(buf: Buffer, engine: string, words?: SpeechWord[], estimated = false) {
   if (words) {
     const form = new FormData();
     form.set("audio", new Blob([new Uint8Array(buf)], { type: "audio/mpeg" }), "speech.mp3");
     // Millisecond precision is plenty for highlighting and keeps the JSON small.
     const ms = (s: number) => Math.round(s * 1000) / 1000;
     form.set("words", JSON.stringify(words.map((w) => ({ text: w.text, start: ms(w.start), end: ms(w.end) }))));
+    if (estimated) form.set("timing", "estimated");
     return new Response(form, { status: 200, headers: { "X-Engine": engine, "Cache-Control": "no-store" } });
   }
   return new NextResponse(new Uint8Array(buf), {
@@ -68,12 +70,26 @@ export async function POST(req: NextRequest) {
   if (text.length > LIMITS.ttsChunkChars) return apiError("TEXT_TOO_LONG", 413, `At most ${LIMITS.ttsChunkChars} characters per request`);
 
   const voice = getVoice(voiceId)!;
+
+  // Google voices: one free endpoint, which ignores speed and pitch and has no fallback of its own.
+  if (voice.provider === "google") {
+    try {
+      const speech = await synthesizeGoogle(text, voice.lang, req.signal);
+      return audio(speech.audio, "google", marks ? speech.words : undefined, true);
+    } catch (e) {
+      if (req.signal.aborted) return new Response(null, { status: 499 });
+      console.warn(`[tts] ${voice.id}: ${(e as Error).message}`);
+      return apiError("ENGINE_UNAVAILABLE", 502, "The speech service did not respond", { fallbackAvailable: false });
+    }
+  }
+
   const backupLang = serverConfig.backupVoiceEnabled ? backupLanguageFor(voice.locale) : null;
 
   if (engine === "backup") {
     if (!backupLang) return apiError("BACKUP_UNAVAILABLE", 400, "No backup voice for this language");
     try {
-      return audio(await synthesizeBackup(text, backupLang, req.signal), "backup", marks ? [] : undefined);
+      const speech = await synthesizeGoogle(text, backupLang, req.signal);
+      return audio(speech.audio, "backup", marks ? speech.words : undefined, true);
     } catch {
       if (req.signal.aborted) return new Response(null, { status: 499 });
       return apiError("ENGINE_UNAVAILABLE", 502, "Backup voice unavailable", { fallbackAvailable: false });

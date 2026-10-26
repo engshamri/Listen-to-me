@@ -90,6 +90,21 @@ await check("word timings come with the audio (read-along)", async () => {
   return `${words.length} words, "${words[0].text}" at ${words[0].start}s … "${words.at(-1).text}" ends ${words.at(-1).end}s of ${seconds.toFixed(2)}s`;
 }, { smoke: true });
 
+await check("Google Arabic voice (second free source) returns MP3 with estimated word timings", async () => {
+  const text = "تُعدّ اللغة العربية من أكثر اللغات انتشاراً في العالم، إذ يتحدث بها أكثر من أربعمئة مليون إنسان. وهي إحدى اللغات الست الرسمية في الأمم المتحدة.";
+  const r = await tts({ text, voice: "google-ar", marks: true });
+  if (r.status !== 200) throw new Error(`HTTP ${r.status} ${await r.text()}`);
+  assert(r.headers.get("x-engine") === "google", `engine ${r.headers.get("x-engine")}`);
+  const form = await r.formData();
+  const audio = new Uint8Array(await form.get("audio").arrayBuffer());
+  const words = JSON.parse(form.get("words"));
+  assert(looksLikeMp3(audio), "audio is not MP3");
+  assert(form.get("timing") === "estimated", "timings not marked as estimated");
+  assert(words.length === text.split(/\s+/).length, `${words.length} words for ${text.split(/\s+/).length}`);
+  for (let i = 1; i < words.length; i++) assert(words[i].start >= words[i - 1].start, "times go backwards");
+  return `${audio.length} bytes, ${words.length} words, last ends at ${words.at(-1).end}s`;
+}, { smoke: true });
+
 await check("faster rate produces shorter audio", async () => {
   const text = "The quick brown fox jumps over the lazy dog. ".repeat(4);
   const slow = new Uint8Array(await (await tts({ text, voice: "en-US-GuyNeural", rate: "-30%" })).arrayBuffer());
