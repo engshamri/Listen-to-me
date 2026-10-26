@@ -467,7 +467,6 @@ const ar: Widen<Messages> = {
     source: "الشيفرة المصدرية",
     support: "ادعم المشروع",
     library: "مكتبتي",
-    credits: "الأصوات من Microsoft Edge · الترجمة من Google Translate",
   },
   themes: {
     title: "السمة",

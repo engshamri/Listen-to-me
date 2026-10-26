@@ -26,6 +26,8 @@ export interface Voice {
   personalities: string[];
   categories: string[];
   available: boolean;
+  /** Set on a hidden voice that duplicates a multilingual voice with the same name: that voice's id. */
+  duplicateOf?: string;
 }
 
 export const ARABIC_REGIONS = ["gulf", "levant", "iraq", "egypt", "maghreb", "yemen"] as const;
@@ -33,15 +35,22 @@ export type ArabicRegion = (typeof ARABIC_REGIONS)[number];
 
 export const VOICES = (catalog as Voice[]).filter((v) => v.available);
 const BY_ID = new Map(VOICES.map((v) => [v.id, v]));
+/** Hidden duplicates → the voice that replaced them, so saved choices keep working. */
+const REPLACED = new Map((catalog as Voice[]).filter((v) => v.duplicateOf).map((v) => [v.id, v.duplicateOf!]));
 
 export const DEFAULT_VOICE_ID = "en-US-AvaMultilingualNeural";
 
+/** The id to use for a voice: itself, or the voice that replaced a hidden duplicate. */
+export function canonicalVoiceId(id: string): string {
+  return REPLACED.get(id) ?? id;
+}
+
 export function getVoice(id: string | null | undefined): Voice | undefined {
-  return id ? BY_ID.get(id) : undefined;
+  return id ? BY_ID.get(canonicalVoiceId(id)) : undefined;
 }
 
 export function isKnownVoice(id: unknown): id is string {
-  return typeof id === "string" && BY_ID.has(id);
+  return typeof id === "string" && BY_ID.has(canonicalVoiceId(id));
 }
 
 export function voiceName(v: Voice, locale: Locale): string {

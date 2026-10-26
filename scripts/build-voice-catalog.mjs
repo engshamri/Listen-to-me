@@ -97,6 +97,20 @@ const voices = raw.map((v) => {
 });
 if (disabled.size) console.log(`disabled by quality audit: ${[...disabled].join(", ")}`);
 
+// Some English voices exist twice under the same name: an English-only version and a
+// multilingual one ("Ava" and "Ava Multilingual"). The list would show two identical
+// cards, so only the multilingual twin (which also reads other languages) is offered;
+// the other is hidden and points to its twin, so saved choices keep working.
+for (const v of voices) {
+  if (v.multilingual) continue;
+  const twin = voices.find((w) => w.multilingual && w.available && w.locale === v.locale && w.name === v.name);
+  if (!twin) continue;
+  v.available = false;
+  v.duplicateOf = twin.id;
+}
+const duplicates = voices.filter((v) => v.duplicateOf);
+if (duplicates.length) console.log(`hidden as duplicates of a multilingual twin: ${duplicates.map((v) => `${v.id} → ${v.duplicateOf}`).join(", ")}`);
+
 const missingArabic = voices.filter((v) => v.lang === "ar" && v.nameAr === v.name).map((v) => v.id);
 if (missingArabic.length) {
   console.error("Arabic voices without an Arabic personal name:", missingArabic.join(", "));

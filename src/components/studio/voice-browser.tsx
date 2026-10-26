@@ -43,10 +43,6 @@ export interface BrowserFilters {
 
 export const EMPTY_BROWSER_FILTERS: BrowserFilters = { query: "", gender: null, personality: null, multilingualOnly: false, lang: null };
 
-export function navForVoice(v: Voice): BrowserNav {
-  return { level: "country", category: categoryOf(v), country: v.country };
-}
-
 /** "Arabic · Iraq accent", "Chinese · Cantonese", "English · United States". */
 export function useVoiceDescriptor() {
   const { t, locale } = useI18n();

@@ -48,7 +48,7 @@ src/
                              speech service client (edge.ts) and its token (edge-drm.ts),
                              backup voice, translation providers, ffmpeg, health
   data/
-    voices.json              Raw provider voice list (322 voices)
+    voices.json              Raw provider voice list (322 voices; 315 offered, see VOICE-QUALITY.md)
     voice-catalog.json       Generated, enriched catalog used by client and server
     voice-quality.json       Audit verdicts per voice + verified multilingual languages
     donations.json           Donation addresses: single source for the page, QR codes and tests
@@ -66,7 +66,7 @@ tests/
 | `file-import.tsx` | File picker, drag and drop, TXT decoding, PDF dialog: page range → text layer → OCR offer for image-only pages (recognize / import without them / choose pages) → progress and Stop |
 | `translate-control.tsx` | Source detection, searchable target list, long-text translation |
 | `voice-panel.tsx` | Selected voice (preview, favorite, clarity note), one-click favorite chips, “Browse all voices” |
-| `voice-browser.tsx` | Hierarchical browser in a dialog (full-screen on phones): language group → country flag cards (Arabic grouped by accent region) → voice cards; global search, gender/style/multilingual filters, breadcrumb + Back, Favorites view; remembers where it was left |
+| `voice-browser.tsx` | Hierarchical browser in a dialog (full-screen on phones), opening on all language groups: language group → country flag cards (Arabic grouped by accent region) → voice cards; global search, gender/style/multilingual filters, breadcrumb + Back, Favorites view; remembers where it was left |
 | `preview-context.tsx` | One shared preview player for the whole app |
 | `settings-panel.tsx` | Speed, pitch, pauses |
 | `generate-panel.tsx` | Generate / progress / cancel / failure recovery (sticky bar on mobile) |

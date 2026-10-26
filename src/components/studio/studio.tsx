@@ -9,7 +9,7 @@ import { PreviewProvider } from "./preview-context";
 import { ResultPanel, type AudioResult, type ConvertFormat } from "./result-panel";
 import { SettingsPanel } from "./settings-panel";
 import { TextPanel } from "./text-panel";
-import { EMPTY_BROWSER_FILTERS, VoiceBrowser, navForVoice, type BrowserFilters, type BrowserNav } from "./voice-browser";
+import { EMPTY_BROWSER_FILTERS, VoiceBrowser, type BrowserFilters, type BrowserNav } from "./voice-browser";
 import { VoicePanel } from "./voice-panel";
 import { ContinueListening } from "@/components/library/continue-listening";
 import { libraryErrorKey, saveResult } from "@/components/library/library-hooks";
@@ -23,6 +23,8 @@ import { buildTimeline } from "@/lib/tts/timeline";
 import { DEFAULT_VOICE_ID, VOICES, VOICE_LANGUAGES, getVoice } from "@/lib/voices/catalog";
 
 const MAX_RESULTS = 5;
+/** The voice browser opens on all language groups, so every language and country is one step away. */
+const BROWSER_START: BrowserNav = { level: "home" };
 
 function rateString(speed: number): string {
   const pct = Math.round((speed - 1) * 100);
@@ -231,15 +233,12 @@ function StudioInner() {
     void run(active);
   }, [gen.phase, disabledReason, voice, settings, run, textRef, chosenRef]);
 
-  /** Opens the browser where it was left, or at the selected voice's country the first time. */
-  const openBrowser = useCallback(
-    (overrides?: { nav?: BrowserNav; filters?: Partial<BrowserFilters> }) => {
-      if (overrides?.filters) setBrowserFilters((f) => ({ ...f, ...overrides.filters }));
-      setBrowserNav((n) => overrides?.nav ?? n ?? navForVoice(voice));
-      setBrowserOpen(true);
-    },
-    [voice],
-  );
+  /** Opens the browser where it was left, or on all language groups the first time. */
+  const openBrowser = useCallback((overrides?: { nav?: BrowserNav; filters?: Partial<BrowserFilters> }) => {
+    if (overrides?.filters) setBrowserFilters((f) => ({ ...f, ...overrides.filters }));
+    setBrowserNav((n) => overrides?.nav ?? n ?? BROWSER_START);
+    setBrowserOpen(true);
+  }, []);
 
   const findVoice = useCallback((lang: string | null) => openBrowser({ filters: { ...EMPTY_BROWSER_FILTERS, lang } }), [openBrowser]);
 
@@ -337,7 +336,7 @@ function StudioInner() {
         onOpenChange={setBrowserOpen}
         selectedId={voice.id}
         onSelect={(voiceId) => updateSettings({ voiceId })}
-        nav={browserNav ?? navForVoice(voice)}
+        nav={browserNav ?? BROWSER_START}
         onNavChange={setBrowserNav}
         filters={browserFilters}
         onFiltersChange={setBrowserFilters}

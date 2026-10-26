@@ -5,8 +5,9 @@ test("hierarchical browsing: language group → country flags → voices, with b
   await openFresh(page);
   const dlg = await openBrowser(page);
 
-  await dlg.getByRole("button", { name: "All voices" }).click();
+  // A new visitor starts at the top: every language group, no Back needed.
   await expect(dlg.getByRole("heading", { name: "All voices" })).toBeVisible();
+  await expect(dlg.getByRole("button", { name: "Back" })).toHaveCount(0);
   for (const name of ["Favorites", "Arabic", "English", "European languages", "Asian languages", "African languages", "Other languages"]) {
     await expect(dlg.getByRole("button", { name: new RegExp(`^${name}`) })).toBeVisible();
   }
@@ -45,6 +46,18 @@ test("hierarchical browsing: language group → country flags → voices, with b
   await expect(dlg.getByRole("button", { name: /^Use Salma\./ })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("no voice appears twice in a country list (English-only twins of multilingual voices are hidden)", async ({ page }) => {
+  await openFresh(page);
+  const dlg = await openBrowser(page);
+  await dlg.getByRole("button", { name: /^English/ }).click();
+  await dlg.getByRole("button", { name: /^United States/ }).click();
+  await expect(dlg.getByRole("heading", { name: "United States" })).toBeVisible();
+  const names = await dlg.getByRole("button", { name: /^Use / }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")!.replace(/^Use (\S+)\..*$/, "$1")));
+  expect(names.length).toBeGreaterThan(10);
+  expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+  for (const name of ["Ava", "Emma", "Andrew", "Brian"]) expect(names.filter((n) => n === name), name).toHaveLength(1);
+});
+
 test("audit verdicts reach the UI: clarity badges, disabled voices hidden, repaired voices present", async ({ page }) => {
   await openFresh(page);
   const dlg = await openBrowser(page);
@@ -79,7 +92,6 @@ test("search spans the whole library and tolerates Arabic spelling variants", as
 test("filters narrow country lists and voice cards", async ({ page }) => {
   await openFresh(page);
   const dlg = await openBrowser(page);
-  await dlg.getByRole("button", { name: "All voices" }).click();
   await dlg.getByRole("button", { name: /^Arabic/ }).click();
   await dlg.getByRole("button", { name: /^Saudi Arabia/ }).click();
   await expect(dlg.getByRole("button", { name: /^Use / })).toHaveCount(2);
@@ -101,7 +113,6 @@ test("favorites: add from a card, see them in Favorites and on the page, persist
   await expect(dlg.getByRole("button", { name: "Remove Rana from favorites" })).toHaveAttribute("aria-pressed", "true");
   await dlg.getByRole("searchbox").fill("");
 
-  await dlg.getByRole("button", { name: "All voices" }).click();
   await expect(dlg.getByRole("button", { name: /^Favorites/ })).toContainText("1 voice");
   await dlg.getByRole("button", { name: /^Favorites/ }).click();
   await expect(dlg.getByRole("button", { name: /^Use Rana\./ })).toBeVisible();
@@ -141,7 +152,6 @@ test.describe("mobile", () => {
     // Measured after the short open animation has finished.
     await expect.poll(async () => (await dlg.boundingBox())!.width).toBeGreaterThanOrEqual(388);
     expect((await dlg.boundingBox())!.height).toBeGreaterThanOrEqual(800);
-    await dlg.getByRole("button", { name: "All voices" }).click();
     await dlg.getByRole("button", { name: /^English/ }).click();
     await dlg.getByRole("button", { name: /^United Kingdom/ }).click();
     expect(await dlg.getByRole("button", { name: /^Use / }).count()).toBeGreaterThan(2);

@@ -50,7 +50,6 @@ export function AppFooter({ year, onAbout }: { year: number; onAbout: (section?:
           </a>
         </nav>
       </div>
-      <p className="text-muted-foreground mx-auto w-full max-w-7xl px-4 pb-6 text-[13px] sm:px-6">{t("footer.credits")}</p>
     </footer>
   );
 }

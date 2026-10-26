@@ -17,6 +17,7 @@ Generated 2026-10-25T15:39:21Z by `scripts/voice-qa/run_audit.py`. Raw data: `.c
 - **Repaired:** 4 Inuktitut voices that could never produce audio in the app (a voice-name format problem) now work.
 - **Replaced:** no free provider offers more natural voices than the Microsoft neural voices already used (see *Coverage*), so disabled voices are not replaced; each affected language still has at least one verified voice.
 - **Retained:** 319 voices. 2 of them are kept with a documented flag for a human listener to judge.
+- **Duplicates hidden (catalog, 2026-10-26):** 4 English-only voices (Ava, Emma, Andrew, Brian, en-US) share their name with a multilingual voice and looked identical in the list, so only the multilingual twin is offered: **315 voices** in the app. Saved choices of the hidden voices move to the twin.
 - **Added:** no new voices exist beyond the provider's 322. Instead, 144 *multilingual voice × language* combinations were verified by speech recognition (12 voices × 12 languages); the voices verified for Arabic are offered in the Arabic section of the voice browser.
 
 ## Method

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { isKnownVoice } from "./catalog";
+import { canonicalVoiceId, isKnownVoice } from "./catalog";
 
 /**
  * Favorite voices, saved in this browser (there are no user accounts).
@@ -18,8 +18,8 @@ function load(): readonly string[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
     if (!Array.isArray(parsed)) return EMPTY;
-    // Drop ids of voices that no longer exist and any duplicates.
-    return [...new Set(parsed.filter(isKnownVoice))].slice(0, MAX);
+    // Drop ids of voices that no longer exist, move hidden duplicates to their replacement, drop repeats.
+    return [...new Set(parsed.filter(isKnownVoice).map(canonicalVoiceId))].slice(0, MAX);
   } catch {
     return EMPTY;
   }

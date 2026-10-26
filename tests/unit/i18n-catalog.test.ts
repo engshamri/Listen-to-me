@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import catalog from "@/data/voice-catalog.json";
 import quality from "@/data/voice-quality.json";
 import rawVoices from "@/data/voices.json";
 import { join } from "node:path";
@@ -9,7 +10,7 @@ import { createFormatters, createTranslator } from "@/lib/i18n/translate";
 import { isPlural } from "@/lib/i18n/types";
 import { backupLanguageFor } from "@/lib/voices/fallback";
 import { PREVIEW_SAMPLES } from "@/lib/voices/samples";
-import { VOICES, VOICE_LANGUAGES, filterVoices, EMPTY_FILTERS, groupVoices, suggestVoiceId, getVoice, DEFAULT_VOICE_ID, PERSONALITIES } from "@/lib/voices/catalog";
+import { VOICES, VOICE_LANGUAGES, filterVoices, EMPTY_FILTERS, groupVoices, suggestVoiceId, getVoice, isKnownVoice, DEFAULT_VOICE_ID, PERSONALITIES, type Voice } from "@/lib/voices/catalog";
 
 function leaves(obj: unknown, prefix = ""): string[] {
   if (typeof obj === "string" || isPlural(obj)) return [prefix];
@@ -63,12 +64,29 @@ describe("i18n", () => {
 });
 
 describe("voice catalog", () => {
-  it("has the provider catalog minus exactly the voices the quality audit disabled", () => {
+  it("has the provider catalog minus the voices the audit disabled and the duplicates of multilingual voices", () => {
     const disabled = Object.entries(quality.voices as Record<string, { status?: string }>)
       .filter(([, q]) => q.status === "disabled")
       .map(([id]) => id);
-    expect(VOICES.length).toBe(rawVoices.length - disabled.length);
+    const duplicates = (catalog as Voice[]).filter((v) => v.duplicateOf);
+    expect(duplicates.map((v) => v.id).sort()).toEqual(["en-US-AndrewNeural", "en-US-AvaNeural", "en-US-BrianNeural", "en-US-EmmaNeural"]);
+    expect(VOICES.length).toBe(rawVoices.length - disabled.length - duplicates.length);
     for (const id of disabled) expect(VOICES.some((v) => v.id === id), id).toBe(false);
+    for (const d of duplicates) {
+      // Hidden, replaced by an offered multilingual voice with the same name and language.
+      expect(VOICES.some((v) => v.id === d.id), d.id).toBe(false);
+      const twin = getVoice(d.id)!;
+      expect(twin.id).toBe(d.duplicateOf);
+      expect(twin.multilingual && twin.name === d.name && twin.locale === d.locale, d.id).toBe(true);
+      expect(isKnownVoice(d.id)).toBe(true);
+    }
+    // No two offered voices look the same in a list.
+    const seen = new Set<string>();
+    for (const v of VOICES) {
+      const key = `${v.locale}|${v.name}`;
+      expect(seen.has(key), key).toBe(false);
+      seen.add(key);
+    }
     expect(rawVoices.length).toBe(322);
     expect(VOICE_LANGUAGES.length).toBe(75);
     for (const v of VOICES) {

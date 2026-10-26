@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MAX_TEXT_CHARS } from "@/lib/files/limits";
-import { DEFAULT_VOICE_ID, isKnownVoice, suggestVoiceId } from "@/lib/voices/catalog";
+import { DEFAULT_VOICE_ID, canonicalVoiceId, isKnownVoice, suggestVoiceId } from "@/lib/voices/catalog";
 
 const SETTINGS_KEY = "asmani:settings";
 const DRAFT_KEY = "asmani:draft";
@@ -54,7 +54,7 @@ function loadSettings(): SpeechSettings {
     saved = null;
   }
   return {
-    voiceId: isKnownVoice(saved?.voiceId) ? saved.voiceId : suggestVoiceId(navigator.languages?.length ? navigator.languages : [navigator.language]),
+    voiceId: isKnownVoice(saved?.voiceId) ? canonicalVoiceId(saved.voiceId) : suggestVoiceId(navigator.languages?.length ? navigator.languages : [navigator.language]),
     speed: clamp(saved?.speed, 0.5, 2, 1),
     pitch: clamp(saved?.pitch, -20, 20, 0),
     pauses: typeof saved?.pauses === "boolean" ? saved.pauses : true,

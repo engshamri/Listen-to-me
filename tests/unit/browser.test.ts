@@ -73,4 +73,11 @@ describe("favorites", () => {
     const fresh = await import("@/lib/voices/favorites");
     expect(fresh.toggleFavorite("ar-EG-SalmaNeural")).toBe(true);
   });
+
+  it("moves a favorite of a hidden duplicate to the voice that replaced it", async () => {
+    localStorage.setItem("asmani:favorites", JSON.stringify(["en-US-AvaNeural", "en-US-AvaMultilingualNeural", "ar-IQ-RanaNeural"]));
+    const { toggleFavorite } = await import("@/lib/voices/favorites");
+    toggleFavorite("en-US-GuyNeural");
+    expect(JSON.parse(localStorage.getItem("asmani:favorites")!)).toEqual(["en-US-GuyNeural", "en-US-AvaMultilingualNeural", "ar-IQ-RanaNeural"]);
+  });
 });

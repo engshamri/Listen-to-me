@@ -38,7 +38,7 @@ const og = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" vi
   ${mark(96, 150, 120)}
   <text x="96" y="350" font-family="${FONT}" font-size="84" font-weight="700" fill="#0b1f1d">Listen to me</text>
   <text x="96" y="440" font-family="${FONT}" font-size="64" font-weight="600" fill="${BRAND}">اسمعني</text>
-  <text x="96" y="520" font-family="${FONT}" font-size="34" fill="#3d524f">Free multilingual text to speech · 322 voices · 75 languages</text>
+  <text x="96" y="520" font-family="${FONT}" font-size="34" fill="#3d524f">Free multilingual text to speech · 315 voices · 75 languages</text>
   ${waveform(760, 150, 360, 220, "#99d5cd")}
 </svg>`;
 

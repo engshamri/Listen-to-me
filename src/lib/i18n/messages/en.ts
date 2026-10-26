@@ -441,7 +441,6 @@ const en = {
     source: "Source code",
     support: "Support",
     library: "My library",
-    credits: "Voices by Microsoft Edge · Translation by Google Translate",
   },
   themes: {
     title: "Theme",

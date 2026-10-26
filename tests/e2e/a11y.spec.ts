@@ -37,11 +37,12 @@ test("no WCAG 2.2 A/AA violations: Arabic RTL, dark theme, with text entered", a
 test("voice browser has no violations at every level", async ({ page }) => {
   await openFresh(page);
   const dlg = await openBrowser(page);
-  await scan(page, "browser/country");
-  await dlg.getByRole("button", { name: "All voices" }).click();
   await scan(page, "browser/home");
   await dlg.getByRole("button", { name: /^Arabic/ }).click();
   await scan(page, "browser/arabic");
+  await dlg.getByRole("button", { name: /^Iraq/ }).click();
+  await expect(dlg.getByRole("heading", { name: "Iraq" })).toBeVisible();
+  await scan(page, "browser/country");
   await dlg.getByRole("searchbox").fill("sa");
   await scan(page, "browser/search");
 });
