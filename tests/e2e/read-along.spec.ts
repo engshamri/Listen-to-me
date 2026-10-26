@@ -138,6 +138,23 @@ test("full-screen reading mode: keyboard, controls, text size", async ({ page })
   await expect(dialog).toBeHidden();
 });
 
+test("long text: reading mode opens on the sentence being read, far down the page", async ({ page }) => {
+  await stubSpeech(page, []);
+  await openFresh(page);
+  const long = Array.from({ length: 400 }, (_, i) => `Sentence number ${i + 1} belongs to a long chapter of course notes.`).join(" ");
+  await generate(page, long);
+  const duration = await page.locator("audio").evaluate((a: HTMLAudioElement) => a.duration);
+  await seek(page, duration * 0.7);
+  await page.getByRole("button", { name: "Full screen" }).click();
+  const dialog = page.getByRole("dialog", { name: "Read along" });
+  // Estimated timings put several sentences in each second, so the box keeps moving.
+  await dialog.getByRole("button", { name: "Play" }).click();
+  for (let i = 0; i < 4; i++) {
+    await page.waitForTimeout(400);
+    await expect(dialog.locator('[data-state="current"]')).toBeInViewport({ timeout: 300 });
+  }
+});
+
 test("subtitles download as SRT and WebVTT", async ({ page }) => {
   await stubSpeech(page, EN_WORDS);
   await openFresh(page);

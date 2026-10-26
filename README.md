@@ -161,7 +161,7 @@ All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) 
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
 | `npm test` (unit, incl. the speech client against a mock service, read-along alignment and the donation address/QR checks) | 160 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, OCR) | 71 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, OCR) | 72 passed |
 | `npm run test:live` (API against a running server, real speech/translation/ffmpeg, word timings) | 26 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |

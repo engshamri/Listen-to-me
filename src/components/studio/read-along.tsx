@@ -180,8 +180,11 @@ export function ReadAlong({
     const boxRect = box.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
     if (elRect.top >= boxRect.top + 8 && elRect.bottom <= boxRect.bottom - 8) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    box.scrollTo({ top: box.scrollTop + (elRect.top - boxRect.top) - box.clientHeight / 4, behavior: reduce ? "auto" : "smooth" });
+    const distance = elRect.top - boxRect.top - box.clientHeight / 4;
+    // Far jumps (opening reading mode, seeking) are instant: a long smooth scroll would
+    // keep restarting as sentences change and fall behind the voice.
+    const smooth = Math.abs(distance) < box.clientHeight && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    box.scrollTo({ top: box.scrollTop + distance, behavior: smooth ? "smooth" : "auto" });
   }, [position.sentence, position.started, follow]);
 
   const onClick = (e: React.MouseEvent) => {
