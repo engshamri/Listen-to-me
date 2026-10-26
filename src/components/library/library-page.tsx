@@ -4,7 +4,7 @@ import { AudioLines, Download, Headphones, Library, Pencil, Play, Search, Trash2
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { downloadBlob, inProgress, libraryErrorKey, useLibraryItems } from "./library-hooks";
+import { downloadBlob, exportNotes, inProgress, libraryErrorKey, useLibraryItems } from "./library-hooks";
 import { LibraryPlayer } from "./library-player";
 import { useSpeechSettings } from "@/components/studio/hooks";
 import { Notice, ProgressBar } from "@/components/studio/primitives";
@@ -219,6 +219,7 @@ function LibraryCard({ item, onListen, onDelete }: { item: LibraryItem; onListen
         )}
         <p className="text-muted-foreground mt-0.5 text-[13px]">
           <span dir="auto">{voice ? voiceName(voice, locale) : item.voiceId}</span> · {fmt.date(created)} · <span className="tabular-nums">{fmt.clock(item.duration)}</span>
+          {item.bookmarks.length > 0 && <> · {t("bookmarks.count", { count: item.bookmarks.length })}</>}
         </p>
         <p className="text-muted-foreground mt-2 line-clamp-2 text-sm leading-relaxed" dir="auto">
           {item.excerpt}
@@ -252,6 +253,24 @@ function LibraryCard({ item, onListen, onDelete }: { item: LibraryItem; onListen
               <DropdownMenuItem onSelect={() => void exportAs("mp3")}>{t("library.exportMp3")}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void exportAs("txt")}>{t("library.exportText")}</DropdownMenuItem>
               {item.duration > 0 && <DropdownMenuItem onSelect={() => void exportAs("srt")}>{t("library.exportSrt")}</DropdownMenuItem>}
+              {item.bookmarks.length > 0 && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    exportNotes(
+                      {
+                        title: item.title,
+                        details: `${voice ? voiceName(voice, locale) : item.voiceId} · ${fmt.date(created)} · ${fmt.clock(item.duration)}`,
+                        bookmarks: item.bookmarks,
+                        fileName: downloadName(voice?.name ?? "voice", voice?.locale ?? "xx", created, "md"),
+                      },
+                      t,
+                      fmt,
+                    )
+                  }
+                >
+                  {t("library.exportNotes")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {!renaming && (

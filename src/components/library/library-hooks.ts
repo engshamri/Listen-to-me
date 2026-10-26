@@ -2,8 +2,20 @@
 
 import { useEffect, useState } from "react";
 import type { AudioResult } from "@/components/studio/result-panel";
-import type { TKey } from "@/lib/i18n/translate";
-import { LibraryError, listItems, requestPersistence, saveRecording, subscribe, updateItem, type LibraryErrorCode, type LibraryItem } from "@/lib/library/store";
+import type { Formatters, TKey, Translator } from "@/lib/i18n/translate";
+import { bookmarksMarkdown } from "@/lib/library/notes";
+import {
+  LibraryError,
+  getItem,
+  listItems,
+  requestPersistence,
+  saveRecording,
+  subscribe,
+  updateItem,
+  type Bookmark,
+  type LibraryErrorCode,
+  type LibraryItem,
+} from "@/lib/library/store";
 
 export function libraryErrorKey(e: unknown): TKey {
   const code: LibraryErrorCode = e instanceof LibraryError ? e.code : "FAILED";
@@ -103,4 +115,65 @@ export function downloadBlob(blob: Blob, name: string) {
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export interface BookmarkControls {
+  list: Bookmark[];
+  add: (bookmark: Pick<Bookmark, "time" | "from" | "excerpt">) => Promise<void>;
+  setNote: (id: string, note: string) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+}
+
+/**
+ * Bookmarks of a saved recording. With no id yet, the first bookmark calls
+ * `ensureId` (which saves the recording) and is added to that item.
+ */
+export function useBookmarks(id: string | undefined, ensureId?: () => Promise<string>): BookmarkControls {
+  const [state, setState] = useState<{ id: string; list: Bookmark[] } | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    const load = () =>
+      getItem(id).then(
+        (item) => alive && setState({ id, list: item?.bookmarks ?? [] }),
+        () => {},
+      );
+    void load();
+    const off = subscribe(() => void load());
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [id]);
+
+  const list = state && state.id === id ? state.list : [];
+  const change = async (target: string, fn: (list: Bookmark[]) => Bookmark[]) => {
+    await updateItem(target, (item) => ({ bookmarks: fn(item.bookmarks) }));
+  };
+  return {
+    list,
+    add: async (b) => {
+      const target = id ?? (await ensureId?.());
+      if (!target) return;
+      const bookmark: Bookmark = { ...b, id: crypto.randomUUID(), note: "", createdAt: Date.now() };
+      // One bookmark per sentence: marking it again keeps the existing one and its note.
+      await change(target, (all) => (all.some((x) => x.from === b.from) ? all : [...all, bookmark].sort((x, y) => x.time - y.time)));
+    },
+    setNote: async (bid, note) => {
+      if (id) await change(id, (all) => all.map((x) => (x.id === bid ? { ...x, note } : x)));
+    },
+    remove: async (bid) => {
+      if (id) await change(id, (all) => all.filter((x) => x.id !== bid));
+    },
+  };
+}
+
+/** Downloads bookmarks and notes as a Markdown file. */
+export function exportNotes(
+  { title, details, bookmarks, fileName }: { title: string; details: string; bookmarks: Bookmark[]; fileName: string },
+  t: Translator,
+  fmt: Formatters,
+) {
+  const md = bookmarksMarkdown({ title, details, heading: t("bookmarks.title"), bookmarks, clock: fmt.clock });
+  downloadBlob(new Blob([md], { type: "text/markdown;charset=utf-8" }), fileName);
 }

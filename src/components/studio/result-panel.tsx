@@ -8,13 +8,14 @@ import { PLAYBACK_RATES, useSpeechSettings } from "./hooks";
 import { Notice, Panel, StepHeading } from "./primitives";
 import { ReadAlong } from "./read-along";
 import { ReadingMode } from "./reading-mode";
-import { libraryErrorKey, saveResult, useSavePosition } from "@/components/library/library-hooks";
+import { exportNotes, libraryErrorKey, saveResult, useBookmarks, useSavePosition } from "@/components/library/library-hooks";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { downloadName } from "@/lib/audio/filename";
 import { subtitleCues, toSrt, toVtt } from "@/lib/audio/subtitles";
 import { registerExclusivePlayer, setListeningSpeed } from "@/lib/audio/playback";
 import { useI18n } from "@/lib/i18n/provider";
+import { titleFrom } from "@/lib/library/store";
 import { cn } from "@/lib/utils";
 import type { Timeline } from "@/lib/tts/timeline";
 import { getVoice, voiceName, voiceSubtitle } from "@/lib/voices/catalog";
@@ -83,11 +84,35 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
   // Once saved, the library remembers where the listener stopped.
   useSavePosition(audioEl, result.libraryId);
 
+  // One save per result, shared by the Save button and the first bookmark.
+  const savingRef = useRef<{ id: string; promise: Promise<string> } | null>(null);
+  function saveOnce(): Promise<string> {
+    if (result.libraryId) return Promise.resolve(result.libraryId);
+    if (savingRef.current?.id !== result.id) {
+      const id = result.id;
+      const promise = saveResult(result).then((item) => {
+        onSaved(id, item.id);
+        return item.id;
+      });
+      promise.catch(() => {
+        if (savingRef.current?.id === id) savingRef.current = null;
+      });
+      savingRef.current = { id, promise };
+    }
+    return savingRef.current.promise;
+  }
+
+  const bookmarks = useBookmarks(result.libraryId, async () => {
+    const wasSaved = Boolean(result.libraryId);
+    const id = await saveOnce();
+    if (!wasSaved) toast(t("bookmarks.savedToLibrary"));
+    return id;
+  });
+
   async function save() {
     setSaving(true);
     try {
-      const item = await saveResult(result);
-      onSaved(result.id, item.id);
+      await saveOnce();
       toast.success(t("library.savedToast"));
     } catch (e) {
       toast.error(t(libraryErrorKey(e)));
@@ -250,7 +275,21 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
               </p>
             </>
           )}
-          <ReadingMode open={readingOpen} onOpenChange={setReadingOpen} audio={audioEl} timeline={result.timeline} duration={result.duration} />
+          <ReadingMode
+            open={readingOpen}
+            onOpenChange={setReadingOpen}
+            audio={audioEl}
+            timeline={result.timeline}
+            duration={result.duration}
+            bookmarks={bookmarks}
+            onExportNotes={() =>
+              exportNotes(
+                { title: titleFrom(result.timeline.text), details: `${name} · ${fmt.date(result.createdAt)} · ${fmt.clock(result.duration)}`, bookmarks: bookmarks.list, fileName: fileBase("md") },
+                t,
+                fmt,
+              )
+            }
+          />
         </section>
       )}
 

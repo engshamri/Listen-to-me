@@ -17,6 +17,7 @@ import {
   type LibraryItem,
   type NewRecording,
 } from "@/lib/library/store";
+import { bookmarksMarkdown } from "@/lib/library/notes";
 import type { Timeline } from "@/lib/tts/timeline";
 
 const TIMELINE: Timeline = {
@@ -142,5 +143,29 @@ describe("library store", () => {
     const item = (id: string, createdAt: number, lastPlayedAt: number | null) => ({ id, createdAt, lastPlayedAt }) as LibraryItem;
     const sorted = sortItems([item("old-unplayed", 10, null), item("old-played-now", 5, 100), item("new", 50, null)]);
     expect(sorted.map((i) => i.id)).toEqual(["old-played-now", "new", "old-unplayed"]);
+  });
+});
+
+describe("bookmarksMarkdown", () => {
+  it("lists bookmarks in time order with the sentence quoted and the note below", () => {
+    const md = bookmarksMarkdown({
+      title: "Lesson 3:  Photosynthesis",
+      details: "Ava · Oct 26, 2026 · 2:43",
+      heading: "Bookmarks",
+      clock: (s) => `0:${String(Math.round(s)).padStart(2, "0")}`,
+      bookmarks: [
+        { id: "b", time: 30, from: 90, excerpt: "Chlorophyll absorbs red\nand blue light.", note: "", createdAt: 2 },
+        { id: "a", time: 12, from: 20, excerpt: "Plants turn light into chemical energy.", note: "  Remember this for the exam.  ", createdAt: 1 },
+      ],
+    });
+    expect(md).toBe(
+      [
+        "# Lesson 3: Photosynthesis",
+        "Ava · Oct 26, 2026 · 2:43",
+        "## Bookmarks",
+        "### 0:12\n\n> Plants turn light into chemical energy.\n\nRemember this for the exam.",
+        "### 0:30\n\n> Chlorophyll absorbs red\n> and blue light.",
+      ].join("\n\n") + "\n",
+    );
   });
 });

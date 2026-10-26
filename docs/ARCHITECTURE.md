@@ -169,6 +169,7 @@ Saved recordings live in the browser's IndexedDB (database `asmani-library`), ne
 - Saving is explicit ("Save to library") or automatic (`autoSave` setting). The first save asks for persistent storage (`navigator.storage.persist()`), so the browser is less likely to evict it. A full disk shows a clear message (`QuotaExceededError` → `QUOTA`).
 - `LibraryPlayer` loads a recording, plays it in the reading mode with a hidden `<audio>` element, and starts from the saved position. `useSavePosition` writes the position every 5 s while playing and on pause, seek, end and page hide. A result in the studio does the same once it is saved.
 - The main page shows "Continue listening" for the most recent recording that was started but not finished.
+- **Bookmarks** are stored on the item: time (the sentence's start), the sentence's offset in the text, a short excerpt, and a note. `useBookmarks` reads them and writes each change in one transaction. From a studio result that is not saved yet, the first bookmark saves the recording. The Save button and bookmarking share one save per result. Reading mode adds a bookmark with the button or the B key (ignored while typing in a note). It reports the addition in a status line, because a toast would cover the header on phones. Notes save 0.8 s after typing stops, on blur, and when the list closes. `lib/library/notes.ts` builds the Markdown export.
 - `tests/unit/library.test.ts` runs the store against `fake-indexeddb` (a development dependency only).
 
 ## Favorites

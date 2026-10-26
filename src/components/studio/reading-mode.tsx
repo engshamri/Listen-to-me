@@ -4,6 +4,8 @@ import { AArrowDown, AArrowUp, ListTree, Pause, Play, SkipBack, SkipForward } fr
 import { useEffect, useMemo, useState } from "react";
 import { PLAYBACK_RATES, READING_SIZES, useSpeechSettings } from "./hooks";
 import { ReadAlong, seekAndPlay, seekTo } from "./read-along";
+import { ReadingBookmarks, addBookmarkAt } from "@/components/library/bookmarks";
+import type { BookmarkControls } from "@/components/library/library-hooks";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -46,6 +48,8 @@ export function ReadingMode({
   timeline,
   duration,
   title,
+  bookmarks,
+  onExportNotes,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,12 +59,17 @@ export function ReadingMode({
   duration: number;
   /** Shown instead of "Read along", e.g. a saved recording's title. */
   title?: string;
+  /** Bookmarks and notes (kept in the library). */
+  bookmarks?: BookmarkControls;
+  onExportNotes?: () => void;
 }) {
   const { t, fmt } = useI18n();
   const [settings, setSettings] = useSpeechSettings();
   const { playing, time } = usePlayback(audio);
   const fontSize = READING_SIZES[settings.readingSize] ?? READING_SIZES[1];
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const bookmarkAdded = (start: number) => setAnnouncement(`${t("bookmarks.added")} (${fmt.clock(start)})`);
   const chapters = useMemo(() => detectChapters(timeline.text), [timeline.text]);
   const starts = useMemo(() => chapterStarts(chapters, timeline.sentences), [chapters, timeline.sentences]);
   let currentChapter = -1;
@@ -82,7 +91,14 @@ export function ReadingMode({
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest("button, select, input, [role='slider']")) return;
+    // Typing a note must never control playback.
+    if (target.closest("input, textarea, select, [contenteditable='true']")) return;
+    if ((e.key === "b" || e.key === "B") && !e.ctrlKey && !e.metaKey && !e.altKey && bookmarks && audio) {
+      e.preventDefault();
+      addBookmarkAt(bookmarks, timeline, audio.currentTime, t, bookmarkAdded);
+      return;
+    }
+    if (target.closest("button, [role='slider']")) return;
     if (e.key === " ") {
       e.preventDefault();
       toggle();
@@ -110,8 +126,12 @@ export function ReadingMode({
                 {t("chapters.current", { title: chapterTitle(currentChapter) })}
               </p>
             )}
-            <DialogDescription className="mt-0.5 hidden text-[13px] sm:block">{t("readAlong.keys")}</DialogDescription>
+            <DialogDescription className="mt-0.5 hidden truncate text-[13px] sm:block">{t("readAlong.keys")}</DialogDescription>
+            <p role="status" className="sr-only">
+              {announcement}
+            </p>
           </div>
+          {bookmarks && <ReadingBookmarks controls={bookmarks} timeline={timeline} audio={audio} time={time} onExport={() => onExportNotes?.()} onAdded={bookmarkAdded} />}
           {chapters.length >= 2 && (
             <Popover open={chaptersOpen} onOpenChange={setChaptersOpen}>
               <PopoverTrigger asChild>
