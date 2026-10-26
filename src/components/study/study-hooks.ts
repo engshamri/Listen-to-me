@@ -5,13 +5,17 @@ import {
   getDoc,
   getPages,
   listAnnotations,
+  listCards,
   listCourses,
   listDocs,
   listGlossary,
+  listQuizResults,
   subscribeStudy,
   type Annotation,
+  type Card,
   type Course,
   type GlossaryEntry,
+  type QuizResult,
   type StudyDoc,
   type StudyPage,
 } from "@/lib/study/store";
@@ -58,6 +62,26 @@ export function useLecture(id: string) {
 
 export function useGlossary() {
   return useStudyData<GlossaryEntry[]>(listGlossary, []);
+}
+
+/** Flashcards of one lecture, or all of them. */
+export function useCards(docId?: string) {
+  return useStudyData<Card[]>(() => listCards(docId), [docId]);
+}
+
+/** Quiz results of one lecture, or all of them. */
+export function useQuizResults(docId?: string) {
+  return useStudyData<QuizResult[]>(() => listQuizResults(docId), [docId]);
+}
+
+/** The current time, refreshed every `everyMs` (for due dates and timers). */
+export function useNow(everyMs = 30_000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), everyMs);
+    return () => clearInterval(timer);
+  }, [everyMs]);
+  return now;
 }
 
 // ---------------------------------------------------------------------------

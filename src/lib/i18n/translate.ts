@@ -57,6 +57,8 @@ export interface Formatters {
   time: (d: Date) => string;
   /** "Oct 26, 2026" */
   date: (d: Date) => string;
+  /** "in 10 minutes", "in 3 days", "now" (ms from now; negative is the past) */
+  relative: (ms: number) => string;
 }
 
 export function createFormatters(locale: Locale, t: Translator): Formatters {
@@ -87,5 +89,17 @@ export function createFormatters(locale: Locale, t: Translator): Formatters {
     },
     time: (d) => new Intl.DateTimeFormat(nl, { hour: "numeric", minute: "2-digit" }).format(d),
     date: (d) => new Intl.DateTimeFormat(nl, { dateStyle: "medium" }).format(d),
+    relative: (ms) => {
+      const rtf = new Intl.RelativeTimeFormat(nl, { numeric: "auto" });
+      const min = Math.round(ms / 60_000);
+      if (Math.abs(min) < 1) return rtf.format(0, "second");
+      if (Math.abs(min) < 60) return rtf.format(min, "minute");
+      const h = Math.round(min / 60);
+      if (Math.abs(h) < 24) return rtf.format(h, "hour");
+      const d = Math.round(h / 24);
+      if (Math.abs(d) < 45) return rtf.format(d, "day");
+      const mo = Math.round(d / 30);
+      return Math.abs(mo) < 12 ? rtf.format(mo, "month") : rtf.format(Math.round(d / 365), "year");
+    },
   };
 }

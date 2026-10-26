@@ -1,15 +1,17 @@
 "use client";
 
-import { ArrowLeft, ChevronLeft, ChevronRight, Languages, Loader2, Maximize, Minus, Plus, Search, Volume2, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, FileUp, Languages, Loader2, Maximize, Minus, Plus, Search, Volume2, X } from "lucide-react";
 import Link from "next/link";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { AskPanel } from "./ask-panel";
 import { ConsentProvider, PROVIDERS, useConsent } from "./consent";
 import { GlossaryPanel } from "./glossary-panel";
 import { NotesPanel } from "./notes-panel";
 import { PageTextPanel } from "./page-text-panel";
 import { PdfViewer, type PdfSelection, type PdfViewerHandle } from "./pdf-viewer";
+import { PracticePanel } from "./practice-panel";
 import { SelectionToolbar, type SelectionAction } from "./selection-toolbar";
 import { TEXT_SIZES, ZOOMS, useLecture, useStudySettings } from "./study-hooks";
 import { StudyPlayer, type ListenRequest } from "./study-player";
@@ -24,31 +26,35 @@ import { destroyPdf, openPdf } from "@/lib/files/pdf";
 import { useI18n } from "@/lib/i18n/provider";
 import { ocrParagraphs } from "@/lib/study/import";
 import { UNTRANSLATED_KINDS, type Box } from "@/lib/study/layout";
-import { addAnnotation, getFile, listGlossary, recordVisit, updateDoc, updatePage, type StudyPage } from "@/lib/study/store";
+import { addAnnotation, attachFile, getFile, listGlossary, recordVisit, updateDoc, updatePage, type StudyPage } from "@/lib/study/store";
 import { translatePages, translateViaApi } from "@/lib/study/translate";
 import { normalizeForSearch } from "@/lib/text/search";
 import { cn } from "@/lib/utils";
 
-type PanelTab = "text" | "translation" | "notes" | "glossary";
-const PANEL_TABS: PanelTab[] = ["text", "translation", "notes", "glossary"];
+type PanelTab = "text" | "translation" | "notes" | "glossary" | "ask" | "practice";
+const PANEL_TABS: PanelTab[] = ["text", "translation", "notes", "glossary", "ask", "practice"];
+/** Tabs that keep their state (questions asked, a quiz in progress) once opened. */
+const KEPT_TABS: PanelTab[] = ["ask", "practice"];
 /** Pages translated per request group (results are saved after each group). */
 const TRANSLATE_GROUP = 8;
 /** Pages recognized per OCR run (results are saved after each run). */
 const OCR_GROUP = 5;
 
-export function Workspace({ id }: { id: string }) {
+export function Workspace({ id, initialPage }: { id: string; initialPage?: number }) {
   return (
     <ConsentProvider>
-      <WorkspaceInner id={id} />
+      <WorkspaceInner key={id} id={id} initialPage={initialPage} />
     </ConsentProvider>
   );
 }
 
-function WorkspaceInner({ id }: { id: string }) {
+function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number }) {
   const { t } = useI18n();
   const { data, error } = useLecture(id);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
-  const [pdfFailed, setPdfFailed] = useState(false);
+  /** "missing": the lecture was restored from a backup without its PDF. */
+  const [pdfFailed, setPdfFailed] = useState<false | "invalid" | "missing">(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -61,12 +67,29 @@ function WorkspaceInner({ id }: { id: string }) {
         opened = doc;
         setPdf(doc);
       })
-      .catch(() => alive && setPdfFailed(true));
+      .catch((e: unknown) => alive && setPdfFailed((e as { code?: string })?.code === "NOT_FOUND" ? "missing" : "invalid"));
     return () => {
       alive = false;
       if (opened) destroyPdf(opened);
     };
-  }, [id]);
+  }, [id, attempt]);
+
+  /** Reattaches the lecture's PDF after a restore without PDFs; it must have the same number of pages. */
+  async function reattach(file: File) {
+    if (!data || data === "missing") return;
+    try {
+      const buffer = await file.arrayBuffer();
+      const doc = await openPdf(buffer.slice(0));
+      const found = doc.numPages;
+      destroyPdf(doc);
+      if (found !== data.doc.pageCount) return void toast.error(t("study.wrongPdf", { found, expected: data.doc.pageCount }));
+      await attachFile(id, new Blob([buffer], { type: "application/pdf" }));
+      setPdfFailed(false);
+      setAttempt((n) => n + 1);
+    } catch {
+      toast.error(t("pdf.invalid"));
+    }
+  }
 
   if (data === "missing" || (error && !data)) {
     return (
@@ -90,21 +113,38 @@ function WorkspaceInner({ id }: { id: string }) {
       </main>
     );
   }
-  return <Loaded key={data.doc.id} data={data} pdf={pdf} />;
+  return <Loaded key={data.doc.id} data={data} pdf={pdf} initialPage={initialPage} missingPdf={pdfFailed === "missing" ? (file) => void reattach(file) : null} />;
 }
 
-function Loaded({ data, pdf }: { data: Exclude<ReturnType<typeof useLecture>["data"], "missing" | null>; pdf: PDFDocumentProxy | null }) {
+function Loaded({
+  data,
+  pdf,
+  initialPage,
+  missingPdf,
+}: {
+  data: Exclude<ReturnType<typeof useLecture>["data"], "missing" | null>;
+  pdf: PDFDocumentProxy | null;
+  initialPage?: number;
+  /** Set when the PDF is not on this device: lets the student choose it again. */
+  missingPdf: ((file: File) => void) | null;
+}) {
   const { t } = useI18n();
   const ask = useConsent();
   const [settings, setSettings] = useStudySettings();
   const { doc, pages, annotations } = data;
   const viewer = useRef<PdfViewerHandle>(null);
-  const [page, setPage] = useState(Math.min(doc.lastPage, doc.pageCount));
+  const [page, setPage] = useState(Math.max(1, Math.min(initialPage ?? doc.lastPage, doc.pageCount)));
   const [focus, setFocus] = useState<{ page: number; box: Box } | null>(null);
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<PdfSelection | null>(null);
   const [selectionCard, setSelectionCard] = useState<{ text: string; translation: string | "loading" } | null>(null);
-  const [tab, setTab] = useState<PanelTab>("text");
+  const [tab, setTabState] = useState<PanelTab>("text");
+  const [kept, setKept] = useState<PanelTab[]>([]);
+  const setTab = useCallback((key: PanelTab) => {
+    setTabState(key);
+    if (KEPT_TABS.includes(key)) setKept((k) => (k.includes(key) ? k : [...k, key]));
+  }, []);
+  const pdfInput = useRef<HTMLInputElement>(null);
   const [mobileView, setMobileView] = useState<"pdf" | "panel">("pdf");
   const [glossaryDraft, setGlossaryDraft] = useState("");
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
@@ -374,14 +414,37 @@ function Loaded({ data, pdf }: { data: Exclude<ReturnType<typeof useLecture>["da
             />
           ) : (
             <div className={cn("flex min-w-0 flex-1 items-center justify-center p-6", mobileView === "panel" && "max-lg:hidden")}>
-              <Notice tone="error">
-                <p>{t("pdf.invalid")}</p>
-              </Notice>
+              {missingPdf ? (
+                <Notice tone="info" className="max-w-md">
+                  <p>{t("study.missingPdf")}</p>
+                  <input
+                    ref={pdfInput}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    aria-hidden
+                    tabIndex={-1}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (file) missingPdf(file);
+                    }}
+                  />
+                  <Button size="sm" className="mt-3" onClick={() => pdfInput.current?.click()}>
+                    <FileUp aria-hidden />
+                    {t("study.choosePdf")}
+                  </Button>
+                </Notice>
+              ) : (
+                <Notice tone="error">
+                  <p>{t("pdf.invalid")}</p>
+                </Notice>
+              )}
             </div>
           )}
 
           <aside aria-label={t("study.panel")} className={cn("bg-background flex min-h-0 flex-col border-s lg:w-[min(46%,580px)]", mobileView === "pdf" ? "max-lg:hidden" : "max-lg:flex-1")}>
-            <div className={cn("flex items-center gap-1 border-b px-2 py-1.5", !((tab === "text" && current && current.source !== "none") || (tab === "translation" && currentTranslation)) && "max-lg:hidden")}>
+            <div className={cn("flex flex-wrap items-center gap-1 border-b px-2 py-1.5", !((tab === "text" && current && current.source !== "none") || (tab === "translation" && currentTranslation)) && "max-lg:hidden")}>
               <div role="tablist" aria-label={t("study.panel")} className="hidden gap-1 lg:flex">
               {PANEL_TABS.map((key) => (
                 <button
@@ -456,6 +519,16 @@ function Loaded({ data, pdf }: { data: Exclude<ReturnType<typeof useLecture>["da
               {tab === "translation" && <TranslationPanel />}
               {tab === "notes" && <NotesPanel focusNoteId={focusNoteId} />}
               {tab === "glossary" && <GlossaryPanel key={glossaryDraft} draft={glossaryDraft} />}
+              {kept.includes("ask") && (
+                <div hidden={tab !== "ask"}>
+                  <AskPanel />
+                </div>
+              )}
+              {kept.includes("practice") && (
+                <div hidden={tab !== "practice"}>
+                  <PracticePanel />
+                </div>
+              )}
             </div>
           </aside>
         </div>

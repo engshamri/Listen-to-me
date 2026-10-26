@@ -97,8 +97,10 @@ tests/
   | `pages` | Paragraphs and saved translations, keyed `[docId, page]` |
   | `annotations` | Highlights, notes and bookmarks |
   | `glossary` | Preferred translations of terms |
+  | `cards` | Flashcards with their spaced-repetition schedule and review history (version 2) |
+  | `quizzes` | Quiz results with their questions and answers (version 2) |
 
-  It uses the shared IndexedDB helpers in `lib/idb.ts`, like the library.
+  It uses the shared IndexedDB helpers in `lib/idb.ts`, like the library. Version 2 added `cards` and `quizzes` in place; deleting a lecture deletes its pages, notes, cards and results in one transaction.
 - **Import** (`lib/study/import.ts`): pdf.js reads every page's text items in the browser, up to 600 pages. The title comes from the PDF's Title field when it is a real one (not "Untitled", a file name or a web address), otherwise from the file name.
 - **Layout** (`lib/study/layout.ts`): `pageParagraphs` turns text items into paragraphs. Each paragraph keeps its box on the page (fractions of the page), which links the text panel, translations and the PDF. Kinds:
   - **heading:** larger text;
@@ -121,6 +123,13 @@ tests/
 - **OCR:** scanned pages use the existing on-device Tesseract engine. A new option returns paragraphs with their boxes and confidence; pages are recognized 5 at a time, saved after each group, and labelled with their confidence.
 - **Consent** (`components/study/consent.tsx`): before the first translation or listening, a dialog names the service (Google Translate, Microsoft) and what is sent. The answer is kept per service in this browser and can be withdrawn on the Study page.
 - **Listening** (`components/study/study-player.tsx`): the existing engine generates the audio (an Arabic voice for Arabic text, else the student's English voice). It shows the current sentence and word (`useReadAlong`), previous/next and repeat sentence, and listening speed, and can bookmark the sentence being read.
+- **Ask your lecture** (`lib/study/search-index.ts`, `components/study/ask-panel.tsx`): BM25 over paragraphs (code and formulas left out), with English and Arabic stop words and light stemming on the Arabic-normalized text. A paragraph counts as found only when it contains at least half of the question's terms; otherwise the panel says "Not found in the provided material." Course scope loads the other lectures' pages from IndexedDB; their results link to `/study/[id]?page=N`. When the question's script differs from the lecture's, the question can be translated (after consent) and the translated query is shown.
+- **Practice** (`lib/study/definitions.ts`, `quiz.ts`, `srs.ts`; `components/study/practice-panel.tsx`, `quiz-panel.tsx`, `flashcards.tsx`):
+  - **Definitions:** sentence patterns in English ("is defined as", "refers to", "means", "is a/the …", a plural with a relative clause, "term: …") and in Arabic on the text without diacritics (يُعرَّف … بأنه, يُقصد بـ, … هو/هي, "term: …"), skipping pronoun subjects and vague openings. Each keeps its sentence, page and paragraph box.
+  - **Quizzes:** built only from those definitions, so every answer and explanation is the lecture's own sentence; wrong options are other terms or definitions of the same lecture. A seeded generator (mulberry32) makes a quiz reproducible. Multiple choice needs 4 definitions, true/false 2; the panel says when fewer questions than asked could be made.
+  - **Flashcards:** SM-2 scheduling (Again → 10 minutes; ease never below 1.3; new cards are due at once); one card per lecture and front (case and spacing ignored). CSV export uses Anki's `#separator`/`#columns` header lines.
+  - None of this is AI, and the panels say so.
+- **Backup** (`lib/study/backup.ts`): one JSON file (`format: "listen-to-me/study-backup"`, `version: 1`) with every store, and optionally the PDFs in base64 (written in pieces, so large files never become one huge string). Restoring checks the whole file first with zod (types, sizes, every page/note/card/result belonging to a lecture in the file, PDFs starting with `%PDF`) and only then writes, in one transaction; records with the same id are replaced. A lecture restored without its PDF opens with its text and asks for the file, which must have the same number of pages.
 - **Security:** files must be PDFs of at most 50 MB and 600 pages; pdf.js 6 runs in its worker and has no `eval` code path; document text is always rendered as text, never as HTML.
 
 ## Read-along

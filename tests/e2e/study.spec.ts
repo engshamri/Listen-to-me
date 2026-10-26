@@ -33,7 +33,7 @@ async function openLecture(page: Page, { locale = "en" }: { locale?: string } = 
   await page.context().clearCookies();
   if (locale !== "en") await page.context().addCookies([{ name: "locale", value: locale, url: "http://127.0.0.1" }]);
   await page.goto("/study");
-  await page.locator('input[type="file"]').setInputFiles(LECTURE);
+  await page.locator('input[type="file"][accept=".pdf,application/pdf"]').setInputFiles(LECTURE);
   await page.waitForURL(/\/study\/[\w-]+$/);
   await expect(page.locator('[data-page="1"] .textLayer span').first()).toBeAttached();
 }

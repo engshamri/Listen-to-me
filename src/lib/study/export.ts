@@ -1,5 +1,6 @@
-/* Markdown exports with page references: translations and notes. */
+/* Markdown exports with page references: translations, notes and quizzes. */
 import { UNTRANSLATED_KINDS } from "./layout";
+import type { Question } from "./quiz";
 import type { Annotation, StudyPage } from "./store";
 
 export interface ExportLabels {
@@ -53,4 +54,36 @@ export function notesMarkdown(title: string, annotations: Annotation[], labels: 
     parts.push([`## ${labels.page(page)}`, ...items].join("\n\n"));
   }
   return `${parts.join("\n\n")}\n`;
+}
+
+export interface QuizLabels {
+  page: (n: number) => string;
+  prompt: (q: Question) => string;
+  yes: string;
+  no: string;
+  answerKey: string;
+}
+
+const LETTERS = "ABCDEFGHIJ";
+
+/** A printable quiz: the questions, then the answer key with each answer's page. */
+export function quizMarkdown(title: string, questions: Question[], labels: QuizLabels): string {
+  const body = questions.map((q, i) => {
+    const lines = [`**${i + 1}. ${labels.prompt(q)}**`];
+    if (q.kind === "mcq-term") lines.push("", `> ${q.definition}`, "", ...q.options.map((o, k) => `- ${LETTERS[k]}) ${o}`));
+    else if (q.kind === "mcq-definition") lines.push("", ...q.options.map((o, k) => `- ${LETTERS[k]}) ${o}`));
+    else if (q.kind === "true-false") lines.push("", `> ${q.term}: ${q.definition}`, "", `- ${labels.yes}`, `- ${labels.no}`);
+    else if (q.kind === "fill-blank") lines.push("", `> ${q.prompt}`);
+    else lines.push("", ...q.terms.map((term, k) => `- ${k + 1}. ${term}`), "", ...q.definitions.map((d, k) => `- ${LETTERS[k]}) ${d}`));
+    return lines.join("\n");
+  });
+  const key = questions.map((q, i) => {
+    let answer: string;
+    if (q.kind === "mcq-term" || q.kind === "mcq-definition") answer = `${LETTERS[q.options.indexOf(q.answer)]}) ${q.answer}`;
+    else if (q.kind === "true-false") answer = q.answer ? labels.yes : `${labels.no} (${q.term}: ${q.correctDefinition})`;
+    else if (q.kind === "fill-blank") answer = q.answer;
+    else answer = q.terms.map((term, k) => `${k + 1}–${LETTERS[q.definitions.indexOf(q.answer[term])]}`).join(", ");
+    return `${i + 1}. ${answer} (${labels.page(q.page)})`;
+  });
+  return `# ${title}\n\n${body.join("\n\n")}\n\n## ${labels.answerKey}\n\n${key.join("\n")}\n`;
 }

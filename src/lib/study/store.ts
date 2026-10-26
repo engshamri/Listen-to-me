@@ -1,5 +1,7 @@
 import { changeChannel, database, IdbError, request } from "@/lib/idb";
 import type { Box, Paragraph } from "./layout";
+import type { Answer, Difficulty, Question } from "./quiz";
+import { newSrs, schedule, type Grade, type Srs } from "./srs";
 
 /*
  * Study data, kept in this browser (IndexedDB "asmani-study"), never uploaded:
@@ -9,6 +11,8 @@ import type { Box, Paragraph } from "./layout";
  *   pages        – paragraphs (with positions) and saved translations, keyed [docId, page]
  *   annotations  – highlights, notes and bookmarks
  *   glossary     – preferred translations of terms
+ *   cards        – flashcards with their spaced-repetition schedule
+ *   quizzes      – practice and exam results
  */
 
 export interface Course {
@@ -83,9 +87,38 @@ export interface GlossaryEntry {
   createdAt: number;
 }
 
+export type CardSource = "definition" | "glossary" | "highlight" | "manual";
+
+export interface Card {
+  id: string;
+  /** The lecture it comes from (null for cards made outside a lecture, e.g. from the glossary). */
+  docId: string | null;
+  front: string;
+  back: string;
+  source: CardSource;
+  page: number | null;
+  createdAt: number;
+  srs: Srs;
+  history: { at: number; grade: Grade }[];
+}
+
+export interface QuizResult {
+  id: string;
+  docId: string;
+  createdAt: number;
+  difficulty: Difficulty;
+  mode: "practice" | "exam";
+  correct: number;
+  total: number;
+  percent: number;
+  durationMs: number;
+  questions: Question[];
+  answers: Record<string, Answer>;
+}
+
 export { IdbError as StudyError, type IdbErrorCode as StudyErrorCode } from "@/lib/idb";
 
-const db = database("asmani-study", 1, (idb) => {
+const db = database("asmani-study", 2, (idb) => {
   const ensure = (name: string, opts?: IDBObjectStoreParameters) => (idb.objectStoreNames.contains(name) ? null : idb.createObjectStore(name, opts));
   ensure("courses", { keyPath: "id" });
   ensure("docs", { keyPath: "id" })?.createIndex("courseId", "courseId");
@@ -93,6 +126,9 @@ const db = database("asmani-study", 1, (idb) => {
   ensure("pages", { keyPath: ["docId", "page"] })?.createIndex("docId", "docId");
   ensure("annotations", { keyPath: "id" })?.createIndex("docId", "docId");
   ensure("glossary", { keyPath: "id" });
+  // Version 2: flashcards and quiz results.
+  ensure("cards", { keyPath: "id" })?.createIndex("docId", "docId");
+  ensure("quizzes", { keyPath: "id" })?.createIndex("docId", "docId");
 });
 const changes = changeChannel("asmani-study");
 export const subscribeStudy = changes.subscribe;
@@ -216,14 +252,29 @@ export async function getFile(id: string): Promise<Blob> {
   return file;
 }
 
+/** Ids of the lectures whose PDF is stored on this device. */
+export async function listFileIds(): Promise<Set<string>> {
+  const keys = await db.transact(["files"], "readonly", (tx) => request(tx.objectStore("files").getAllKeys()));
+  return new Set(keys as string[]);
+}
+
+/** Stores the PDF of a lecture that was restored from a backup without it. */
+export async function attachFile(id: string, file: Blob): Promise<void> {
+  await db.transact(["docs", "files"], "readwrite", async (tx) => {
+    if (!(await request(tx.objectStore("docs").getKey(id)))) throw new IdbError("NOT_FOUND");
+    tx.objectStore("files").put(file, id);
+  });
+  changes.notify();
+}
+
 export async function deleteDoc(id: string): Promise<void> {
-  await db.transact(["docs", "files", "pages", "annotations"], "readwrite", async (tx) => {
+  await db.transact(["docs", "files", "pages", "annotations", "cards", "quizzes"], "readwrite", async (tx) => {
     tx.objectStore("docs").delete(id);
     tx.objectStore("files").delete(id);
-    const pages = tx.objectStore("pages");
-    for (const key of await request(pages.index("docId").getAllKeys(id))) pages.delete(key);
-    const notes = tx.objectStore("annotations");
-    for (const key of await request(notes.index("docId").getAllKeys(id))) notes.delete(key);
+    for (const name of ["pages", "annotations", "cards", "quizzes"]) {
+      const store = tx.objectStore(name);
+      for (const key of await request(store.index("docId").getAllKeys(id))) store.delete(key);
+    }
   });
   changes.notify();
 }
@@ -310,5 +361,136 @@ export async function saveGlossaryEntry(entry: Pick<GlossaryEntry, "term" | "tra
 
 export async function deleteGlossaryEntry(id: string): Promise<void> {
   await db.transact(["glossary"], "readwrite", (tx) => void tx.objectStore("glossary").delete(id));
+  changes.notify();
+}
+
+// ---------------------------------------------------------------------------
+// Flashcards
+// ---------------------------------------------------------------------------
+
+const cardKey = (front: string) => front.replace(/\s+/gu, " ").trim().toLowerCase();
+
+/** Cards of one lecture, or all cards when docId is undefined. Newest first. */
+export async function listCards(docId?: string): Promise<Card[]> {
+  const all = await db.transact(["cards"], "readonly", (tx) => {
+    const store = tx.objectStore("cards");
+    return request((docId === undefined ? store.getAll() : store.index("docId").getAll(docId)) as IDBRequest<Card[]>);
+  });
+  return all.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Adds cards, skipping any whose front already exists for the same lecture. Returns how many were added. */
+export async function addCards(cards: Pick<Card, "docId" | "front" | "back" | "source" | "page">[]): Promise<number> {
+  const now = Date.now();
+  const added = await db.transact(["cards"], "readwrite", async (tx) => {
+    const store = tx.objectStore("cards");
+    const existing = await request(store.getAll() as IDBRequest<Card[]>);
+    const seen = new Set(existing.map((c) => `${c.docId ?? ""}|${cardKey(c.front)}`));
+    let n = 0;
+    for (const c of cards) {
+      const front = c.front.trim().slice(0, 2000);
+      const back = c.back.trim().slice(0, 4000);
+      const key = `${c.docId ?? ""}|${cardKey(front)}`;
+      if (!front || !back || seen.has(key)) continue;
+      seen.add(key);
+      store.put({ ...c, front, back, id: newId(), createdAt: now + n, srs: newSrs(now), history: [] } satisfies Card);
+      n++;
+    }
+    return n;
+  });
+  if (added) changes.notify();
+  return added;
+}
+
+export async function updateCard(id: string, patch: Partial<Pick<Card, "front" | "back">>): Promise<void> {
+  await db.transact(["cards"], "readwrite", async (tx) => {
+    const store = tx.objectStore("cards");
+    const card = (await request(store.get(id) as IDBRequest<Card | undefined>)) ?? null;
+    if (!card) throw new IdbError("NOT_FOUND");
+    store.put({ ...card, ...patch });
+  });
+  changes.notify();
+}
+
+/** Records a review and schedules the card's next appearance. */
+export async function reviewCard(id: string, grade: Grade, now = Date.now()): Promise<Card> {
+  const updated = await db.transact(["cards"], "readwrite", async (tx) => {
+    const store = tx.objectStore("cards");
+    const card = (await request(store.get(id) as IDBRequest<Card | undefined>)) ?? null;
+    if (!card) throw new IdbError("NOT_FOUND");
+    const next: Card = { ...card, srs: schedule(card.srs, grade, now), history: [...card.history, { at: now, grade }].slice(-200) };
+    store.put(next);
+    return next;
+  });
+  changes.notify();
+  return updated;
+}
+
+export async function deleteCard(id: string): Promise<void> {
+  await db.transact(["cards"], "readwrite", (tx) => void tx.objectStore("cards").delete(id));
+  changes.notify();
+}
+
+// ---------------------------------------------------------------------------
+// Quiz results
+// ---------------------------------------------------------------------------
+
+export async function saveQuizResult(result: Omit<QuizResult, "id" | "createdAt">): Promise<QuizResult> {
+  const saved: QuizResult = { ...result, id: newId(), createdAt: Date.now() };
+  await db.transact(["quizzes"], "readwrite", (tx) => void tx.objectStore("quizzes").put(saved));
+  changes.notify();
+  return saved;
+}
+
+/** Results of one lecture (or all), newest first. */
+export async function listQuizResults(docId?: string): Promise<QuizResult[]> {
+  const all = await db.transact(["quizzes"], "readonly", (tx) => {
+    const store = tx.objectStore("quizzes");
+    return request((docId === undefined ? store.getAll() : store.index("docId").getAll(docId)) as IDBRequest<QuizResult[]>);
+  });
+  return all.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+// ---------------------------------------------------------------------------
+// Backup and restore (everything in the study database)
+// ---------------------------------------------------------------------------
+
+export interface StudyDump {
+  courses: Course[];
+  docs: StudyDoc[];
+  pages: StudyPage[];
+  annotations: Annotation[];
+  glossary: GlossaryEntry[];
+  cards: Card[];
+  quizzes: QuizResult[];
+  files: Map<string, Blob>;
+}
+
+const DATA_STORES = ["courses", "docs", "pages", "annotations", "glossary", "cards", "quizzes"] as const;
+
+export async function dumpStudyData({ withFiles }: { withFiles: boolean }): Promise<StudyDump> {
+  return db.transact([...DATA_STORES, "files"], "readonly", async (tx) => {
+    const [courses, docs, pages, annotations, glossary, cards, quizzes] = await Promise.all(DATA_STORES.map((name) => request(tx.objectStore(name).getAll())));
+    const files = new Map<string, Blob>();
+    if (withFiles) {
+      const store = tx.objectStore("files");
+      const keys = (await request(store.getAllKeys())) as string[];
+      const blobs = (await request(store.getAll())) as Blob[];
+      keys.forEach((k, i) => files.set(k, blobs[i]));
+    }
+    return { courses, docs, pages, annotations, glossary, cards, quizzes, files } as StudyDump;
+  });
+}
+
+/** Writes a backup into the database; records with the same id are replaced. */
+export async function restoreStudyData(data: StudyDump): Promise<void> {
+  await db.transact([...DATA_STORES, "files"], "readwrite", (tx) => {
+    for (const name of DATA_STORES) {
+      const store = tx.objectStore(name);
+      for (const record of data[name] as object[]) store.put(record);
+    }
+    const files = tx.objectStore("files");
+    for (const [id, blob] of data.files) files.put(blob, id);
+  });
   changes.notify();
 }

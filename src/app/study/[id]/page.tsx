@@ -11,7 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("study.metaTitle"), robots: { index: false } };
 }
 
-export default async function StudyLecture({ params }: { params: Promise<{ id: string }> }) {
+export default async function StudyLecture({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string | string[] }> }) {
   const { id } = await params;
-  return <Workspace id={id} />;
+  // "?page=12" opens the lecture at that page (links from a search across a course).
+  const page = Number((await searchParams).page);
+  return <Workspace id={id} initialPage={Number.isInteger(page) && page > 0 ? page : undefined} />;
 }

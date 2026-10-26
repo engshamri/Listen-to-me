@@ -1,12 +1,14 @@
 "use client";
 
-import { BookOpen, CheckCircle2, FilePlus2, FolderPlus, GraduationCap, MoreHorizontal, Pencil, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { BookOpen, CheckCircle2, FilePlus2, FolderPlus, GraduationCap, Layers, MoreHorizontal, Pencil, ShieldCheck, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PROVIDERS } from "./consent";
-import { useLectures, useStudySettings } from "./study-hooks";
+import { dueCards } from "./flashcards";
+import { BackupSection } from "./study-backup";
+import { useCards, useLectures, useNow, useQuizResults, useStudySettings } from "./study-hooks";
 import { useLectureImport } from "./use-lecture-import";
 import { Notice, Panel, ProgressBar } from "@/components/studio/primitives";
 import { Button } from "@/components/ui/button";
@@ -14,13 +16,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n/provider";
-import { createCourse, deleteCourse, deleteDoc, renameCourse, updateDoc, type Course, type StudyDoc } from "@/lib/study/store";
+import { createCourse, deleteCourse, deleteDoc, renameCourse, updateDoc, type Course, type QuizResult, type StudyDoc } from "@/lib/study/store";
 import { cn } from "@/lib/utils";
 
 export function StudyHome() {
   const { t } = useI18n();
   const router = useRouter();
   const { data, error } = useLectures();
+  const { data: cards } = useCards();
+  const { data: quizzes } = useQuizResults();
+  const now = useNow();
   const { progress, importFile, cancel } = useLectureImport((doc) => router.push(`/study/${doc.id}`));
   const fileInput = useRef<HTMLInputElement>(null);
   const importCourse = useRef<string | null>(null);
@@ -37,6 +42,7 @@ export function StudyHome() {
   const docs = data?.docs ?? [];
   const courses = data?.courses ?? [];
   const recent = docs.find((d) => d.lastOpenedAt !== null);
+  const due = cards ? dueCards(cards, now).length : 0;
   const fail = (e: unknown) => toast.error(t((e as { code?: string })?.code === "QUOTA" ? "library.errors.QUOTA" : "library.errors.FAILED"));
 
   return (
@@ -121,6 +127,21 @@ export function StudyHome() {
         </Panel>
       )}
 
+      {cards && cards.length > 0 && (
+        <Panel aria-labelledby="review-title" className="mb-6 flex flex-wrap items-center gap-3 p-4">
+          <Layers className="text-primary size-6 shrink-0" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <h2 id="review-title" className="font-semibold">
+              {t("study.review.title")}
+            </h2>
+            <p className="text-muted-foreground text-[13px]">{t("study.review.due", { count: due })}</p>
+          </div>
+          <Button asChild variant={due ? "default" : "outline"}>
+            <Link href="/study/review">{t("study.review.open")}</Link>
+          </Button>
+        </Panel>
+      )}
+
       <section aria-labelledby="courses-title" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="courses-title" className="text-lg font-semibold">
@@ -165,10 +186,13 @@ export function StudyHome() {
             onAdd={() => pick(course.id)}
             onDelete={() => setDeletingCourse(course)}
             onDeleteDoc={setDeleting}
+            quizzes={quizzes ?? []}
           />
         ))}
-        {docs.some((d) => !d.courseId) && <CourseSection course={null} docs={docs.filter((d) => !d.courseId)} courses={courses} onAdd={() => pick(null)} onDeleteDoc={setDeleting} />}
+        {docs.some((d) => !d.courseId) && <CourseSection course={null} docs={docs.filter((d) => !d.courseId)} courses={courses} onAdd={() => pick(null)} onDeleteDoc={setDeleting} quizzes={quizzes ?? []} />}
       </section>
+
+      <BackupSection />
 
       <PrivacySection />
 
@@ -230,6 +254,7 @@ function CourseSection({
   onAdd,
   onDelete,
   onDeleteDoc,
+  quizzes,
 }: {
   course: Course | null;
   docs: StudyDoc[];
@@ -237,11 +262,16 @@ function CourseSection({
   onAdd: () => void;
   onDelete?: () => void;
   onDeleteDoc: (doc: StudyDoc) => void;
+  quizzes: QuizResult[];
 }) {
   const { t } = useI18n();
   const [renaming, setRenaming] = useState<string | null>(null);
   const headingId = useId();
   const title = course?.title ?? t("study.otherLectures");
+  // Course progress: pages read (or whole lectures completed) over all pages.
+  const totalPages = docs.reduce((n, d) => n + d.pageCount, 0);
+  const readPages = docs.reduce((n, d) => n + (d.completed ? d.pageCount : d.visited.length), 0);
+  const coursePercent = totalPages ? Math.round((readPages / totalPages) * 100) : 0;
 
   return (
     <Panel aria-labelledby={headingId} className="p-4">
@@ -269,6 +299,7 @@ function CourseSection({
         ) : (
           <h3 id={headingId} className="min-w-0 flex-1 truncate font-semibold" dir="auto">
             {title} <span className="text-muted-foreground text-[13px] font-normal">· {t("study.lectureCount", { count: docs.length })}</span>
+            {course && docs.length > 0 && <span className="text-muted-foreground text-[13px] font-normal"> · {t("study.progress", { percent: coursePercent })}</span>}
           </h3>
         )}
         <Button size="sm" variant="outline" onClick={onAdd} aria-describedby={headingId}>
@@ -289,7 +320,7 @@ function CourseSection({
       {docs.length ? (
         <ul className="divide-y">
           {docs.map((doc) => (
-            <LectureRow key={doc.id} doc={doc} courses={courses} onDelete={() => onDeleteDoc(doc)} />
+            <LectureRow key={doc.id} doc={doc} courses={courses} onDelete={() => onDeleteDoc(doc)} quizzes={quizzes.filter((q) => q.docId === doc.id)} />
           ))}
         </ul>
       ) : (
@@ -299,7 +330,7 @@ function CourseSection({
   );
 }
 
-function LectureRow({ doc, courses, onDelete }: { doc: StudyDoc; courses: Course[]; onDelete: () => void }) {
+function LectureRow({ doc, courses, onDelete, quizzes }: { doc: StudyDoc; courses: Course[]; onDelete: () => void; quizzes: QuizResult[] }) {
   const { t, fmt } = useI18n();
   const [renaming, setRenaming] = useState<string | null>(null);
   const titleId = useId();
@@ -341,6 +372,14 @@ function LectureRow({ doc, courses, onDelete }: { doc: StudyDoc; courses: Course
             </span>
           ) : (
             <span>{t("study.progress", { percent })}</span>
+          )}
+          {quizzes.length > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span title={t("study.performance.average", { percent: Math.round(quizzes.reduce((n, q) => n + q.percent, 0) / quizzes.length) })}>
+                {t("study.performance.last", { percent: quizzes[0].percent })}
+              </span>
+            </>
           )}
         </p>
         {!doc.completed && percent > 0 && <ProgressBar value={percent} label={t("study.progress", { percent })} className="mt-1.5 h-1.5 max-w-xs" />}
