@@ -41,6 +41,7 @@ Working and tested on Windows 11 (see [Testing](#testing)). Run it on your own c
 | **Voice quality** | All 322 voices audited with audio measurements, Whisper large-v3 speech recognition against same-language peers, and reliability tests: 307 verified, 10 audio-checked (languages the recognizer cannot evaluate), 2 kept with a documented flag, 3 disabled for failing most requests; 4 Inuktitut voices that never worked were repaired; verified voices carry a “Clarity verified” badge. See [docs/VOICE-QUALITY.md](docs/VOICE-QUALITY.md) |
 | **Speech** | Language-aware sentence splitting (never cuts a word) · paragraph-aware chunking · pauses after headings · speed and pitch · 3 parts in parallel with ordered assembly · retries with back-off · resume from a failed part without regenerating finished parts · real cancellation (the server kills the synthesis process) |
 | **Voice consistency** | No silent fallback. If the speech service fails, you choose: retry, keep the finished parts, or explicitly accept a backup voice; any part read by it is listed with the result |
+| **Read-along** | While the audio plays, the sentence being read sits in a box, the word being spoken is highlighted, text already read turns dark and text still to come stays grey, so you always know where the voice is · word timings come from Microsoft's speech service itself (estimated, and marked as approximate, only for parts read by the backup voice) · click any sentence to play from there · the text follows the voice and pauses following while you scroll · **full-screen reading mode** with adjustable large text, previous/next sentence, a seek bar and keyboard control (Space, ← →, Esc) · listening speed 0.75×–2× without regenerating · **SRT and WebVTT subtitles** · Arabic right-to-left |
 | **Results** | One controlled player (never two sounds at once, no autoplay) · exact duration from the MP3 frames · size, voice, speed, pitch, status · MP3 download · M4A (audio-only AAC) and **MP4 video** (H.264 still cover + audio) on demand · descriptive, timestamped file names · session history (kept only in the tab) |
 | **Interface** | English (default) and Arabic with full RTL · 18 themes (10 light, 8 dark) + System in a gallery of live previews; saved and server-rendered (no flash) · WCAG 2.2 AA contrast verified for every theme · responsive layout with a sticky Generate bar on phones · reduced-motion support |
 | **Security** | Input validation (zod) · body-size caps · rate limits · cross-site request protection · concurrency caps for speech sessions and ffmpeg · no shell execution · private temp directories deleted after each request · security headers |
@@ -140,9 +141,10 @@ python server.py  (launcher: checks, installs, builds, supervises Next.js)
 Browser (React 19, Next.js App Router)
   ├─ Editor, TXT/PDF import (pdf.js worker), OCR (tesseract.js worker), translation UI
   ├─ Voice library (static catalog + /api/preview)
-  └─ Generation engine: chunk → POST /api/tts ×N (3 in parallel) → join MP3
+  ├─ Generation engine: chunk → POST /api/tts ×N (3 in parallel) → join MP3
+  └─ Read-along: word timings per part → one timeline → highlighted text, reading mode, subtitles
 Next.js route handlers (Node.js)
-  ├─ /api/tts        → Microsoft Edge read-aloud service over WebSocket | opt-in backup voice
+  ├─ /api/tts        → Microsoft Edge read-aloud service over WebSocket (audio + word timings) | opt-in backup voice
   ├─ /api/preview    → cached sample per voice (.cache/previews, or the temp dir on Vercel)
   ├─ /api/translate  → Google Translate (free endpoint) or LibreTranslate
   ├─ /api/convert    → ffmpeg (system or bundled): M4A audio or MP4 video
@@ -158,14 +160,16 @@ All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
-| `npm test` (unit, incl. the speech client against a mock service and the donation address/QR checks) | 146 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, OCR) | 61 passed |
-| `npm run test:live` (API against a running server, real speech/translation/ffmpeg) | 25 passed |
+| `npm test` (unit, incl. the speech client against a mock service, read-along alignment and the donation address/QR checks) | 160 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, OCR) | 71 passed |
+| `npm run test:live` (API against a running server, real speech/translation/ffmpeg, word timings) | 26 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |
 | `npm audit` | 0 vulnerabilities |
 
 Automated tests cannot judge how natural a voice sounds; docs/TESTING.md includes a short listening protocol for that.
+
+A GitHub Actions workflow (`.github/workflows/production-check.yml`) runs a short version of the live checks against the public site every day and opens an issue if speech, translation or the security checks fail. This is the early warning for the day Microsoft changes its connection token.
 
 ## Privacy
 

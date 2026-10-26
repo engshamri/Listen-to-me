@@ -21,7 +21,7 @@ export function AppHeader({ onAbout }: { onAbout: () => void }) {
   const { t, locale, setLocale } = useI18n();
 
   return (
-    <header className="bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-40 border-b backdrop-blur-md">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/90 sticky top-0 z-40 border-b backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-md">
           <LogoMark className="size-7" />

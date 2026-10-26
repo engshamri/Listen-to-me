@@ -15,6 +15,7 @@ import { MAX_TEXT_CHARS } from "@/lib/files/limits";
 import { useI18n } from "@/lib/i18n/provider";
 import { prepareForSpeech, splitIntoChunks } from "@/lib/text/chunk";
 import { GenerationError, assemble, completedCount, contiguousPrefix, createJob, runJob, type Job } from "@/lib/tts/engine";
+import { buildTimeline } from "@/lib/tts/timeline";
 import { DEFAULT_VOICE_ID, VOICES, VOICE_LANGUAGES, getVoice } from "@/lib/voices/catalog";
 
 const MAX_RESULTS = 5;
@@ -40,6 +41,11 @@ interface ActiveJob {
   voiceId: string;
   speed: number;
   pitch: number;
+  /** The text as it was when generation started (line endings normalized), for read-along. */
+  text: string;
+  /** Chunks as cut from `text`, before the speech-only changes of prepareForSpeech. */
+  displayChunks: string[];
+  locale: string;
 }
 
 function StudioInner() {
@@ -114,6 +120,13 @@ function StudioInner() {
       const { job } = active;
       const blob = assemble(job, upTo);
       const duration = mp3DurationSeconds(new Uint8Array(await blob.arrayBuffer()));
+      const timeline = buildTimeline({
+        text: active.text,
+        displayChunks: active.displayChunks.slice(0, upTo),
+        audio: job.audio.slice(0, upTo).filter((a): a is ArrayBuffer => a !== null),
+        words: job.words.slice(0, upTo),
+        locale: active.locale,
+      });
       const result: AudioResult = {
         id: `r${Date.now()}-${++resultCounter}`,
         blob,
@@ -127,6 +140,7 @@ function StudioInner() {
         partsTotal: job.chunks.length,
         backupParts: job.engines.slice(0, upTo).flatMap((e, i) => (e === "backup" ? [i + 1] : [])),
         conversions: {},
+        timeline,
       };
       setResults((prev) => {
         const next = [result, ...prev];
@@ -188,9 +202,11 @@ function StudioInner() {
       document.getElementById("editor")?.focus();
       return;
     }
-    const chunks = splitIntoChunks(textRef.current, { locale: voice.lang }).map((c) => prepareForSpeech(c, { lang: voice.lang, pauseAtLineBreaks: settings.pauses }));
+    const snapshot = textRef.current.replace(/\r\n?/g, "\n");
+    const displayChunks = splitIntoChunks(snapshot, { locale: voice.lang });
+    const chunks = displayChunks.map((c) => prepareForSpeech(c, { lang: voice.lang, pauseAtLineBreaks: settings.pauses }));
     const job = createJob({ voiceId: voice.id, rate: rateString(settings.speed), pitch: pitchString(settings.pitch) }, chunks);
-    const active = { job, voiceId: voice.id, speed: settings.speed, pitch: settings.pitch };
+    const active = { job, voiceId: voice.id, speed: settings.speed, pitch: settings.pitch, text: snapshot, displayChunks, locale: voice.lang };
     activeRef.current = active;
     void run(active);
   }, [gen.phase, disabledReason, voice, settings, run, textRef]);

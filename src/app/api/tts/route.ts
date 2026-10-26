@@ -3,6 +3,7 @@ import { z } from "zod";
 import { synthesizeBackup } from "@/lib/server/backup-tts";
 import { LIMITS, serverConfig } from "@/lib/server/config";
 import { EdgeError, synthesizeEdge } from "@/lib/server/edge";
+import type { SpeechWord } from "@/lib/text/align";
 import { apiError, BodyTooLargeError, clientKey, crossSiteRejection, readJsonLimited } from "@/lib/server/http";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { getVoice, isKnownVoice } from "@/lib/voices/catalog";
@@ -23,9 +24,19 @@ const Body = z.object({
   rate: z.string().regex(/^[+-]\d{1,3}%$/).refine(inRange(-50, 100)).default("+0%"),
   pitch: z.string().regex(/^[+-]\d{1,3}Hz$/).refine(inRange(-50, 50)).default("+0Hz"),
   engine: z.enum(["edge", "backup"]).default("edge"),
+  /** Also return word timings (for read-along) as multipart/form-data: "audio" + "words". */
+  marks: z.boolean().default(false),
 });
 
-function audio(buf: Buffer, engine: string) {
+function audio(buf: Buffer, engine: string, words?: SpeechWord[]) {
+  if (words) {
+    const form = new FormData();
+    form.set("audio", new Blob([new Uint8Array(buf)], { type: "audio/mpeg" }), "speech.mp3");
+    // Millisecond precision is plenty for highlighting and keeps the JSON small.
+    const ms = (s: number) => Math.round(s * 1000) / 1000;
+    form.set("words", JSON.stringify(words.map((w) => ({ text: w.text, start: ms(w.start), end: ms(w.end) }))));
+    return new Response(form, { status: 200, headers: { "X-Engine": engine, "Cache-Control": "no-store" } });
+  }
   return new NextResponse(new Uint8Array(buf), {
     status: 200,
     headers: {
@@ -52,7 +63,7 @@ export async function POST(req: NextRequest) {
   }
   const parsed = Body.safeParse(raw);
   if (!parsed.success) return apiError("INVALID_INPUT", 400, parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
-  const { text, voice: voiceId, rate, pitch, engine } = parsed.data;
+  const { text, voice: voiceId, rate, pitch, engine, marks } = parsed.data;
   if (!text.trim()) return apiError("INVALID_INPUT", 400, "Text is empty");
   if (text.length > LIMITS.ttsChunkChars) return apiError("TEXT_TOO_LONG", 413, `At most ${LIMITS.ttsChunkChars} characters per request`);
 
@@ -62,7 +73,7 @@ export async function POST(req: NextRequest) {
   if (engine === "backup") {
     if (!backupLang) return apiError("BACKUP_UNAVAILABLE", 400, "No backup voice for this language");
     try {
-      return audio(await synthesizeBackup(text, backupLang, req.signal), "backup");
+      return audio(await synthesizeBackup(text, backupLang, req.signal), "backup", marks ? [] : undefined);
     } catch {
       if (req.signal.aborted) return new Response(null, { status: 499 });
       return apiError("ENGINE_UNAVAILABLE", 502, "Backup voice unavailable", { fallbackAvailable: false });
@@ -70,7 +81,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    return audio(await synthesizeEdge({ text, voice: voice.id, rate, pitch, signal: req.signal }), "edge");
+    const speech = await synthesizeEdge({ text, voice: voice.id, rate, pitch, signal: req.signal });
+    return audio(speech.audio, "edge", marks ? speech.words : undefined);
   } catch (e) {
     const code = e instanceof EdgeError ? e.code : "ENGINE_UNAVAILABLE";
     if (code === "ABORTED") return new Response(null, { status: 499 });

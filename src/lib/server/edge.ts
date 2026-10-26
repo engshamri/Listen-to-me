@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import WebSocket from "ws";
+import { mp3DurationSeconds } from "@/lib/audio/mp3";
+import type { SpeechWord } from "@/lib/text/align";
 import { serverConfig } from "./config";
 import { adjustClockSkew, CHROMIUM_MAJOR_VERSION, SEC_MS_GEC_VERSION, secMsGec, TRUSTED_CLIENT_TOKEN } from "./edge-drm";
 import { Semaphore } from "./semaphore";
@@ -43,6 +45,29 @@ export function removeIncompatibleCharacters(text: string): string {
 
 export function escapeXml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Word texts in metadata come back XML-escaped, as they were sent. */
+export function unescapeXml(text: string): string {
+  return text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+}
+
+/** WordBoundary events from an audio.metadata body; times in seconds (the service counts 100 ns ticks). */
+export function parseWordBoundaries(body: string): SpeechWord[] {
+  const parsed = JSON.parse(body) as { Metadata?: { Type?: string; Data?: { Offset?: number; Duration?: number; text?: { Text?: string } } }[] };
+  const words: SpeechWord[] = [];
+  for (const m of parsed.Metadata ?? []) {
+    if (m.Type !== "WordBoundary" || !m.Data) continue;
+    const start = (m.Data.Offset ?? 0) / 1e7;
+    words.push({ start, end: start + (m.Data.Duration ?? 0) / 1e7, text: unescapeXml(m.Data.text?.Text ?? "") });
+  }
+  return words;
+}
+
+export interface Speech {
+  audio: Buffer;
+  /** When each word is spoken, in seconds from the start of `audio`. */
+  words: SpeechWord[];
 }
 
 /**
@@ -121,8 +146,8 @@ class HandshakeRejected extends Error {
   }
 }
 
-/** One WebSocket session: sends one piece of text and collects its MP3 frames. */
-function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: string, signal: AbortSignal): Promise<Buffer> {
+/** One WebSocket session: sends one piece of text and collects its MP3 frames and word timings. */
+function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: string, signal: AbortSignal): Promise<Speech> {
   return new Promise((resolve, reject) => {
     // EDGE_TTS_URL exists for tests, which point it at a local mock service.
     const url =
@@ -141,6 +166,7 @@ function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: st
       },
     });
     const audio: Buffer[] = [];
+    const words: SpeechWord[] = [];
     let settled = false;
     let idle: ReturnType<typeof setTimeout> | undefined;
     const stillAlive = () => {
@@ -156,7 +182,7 @@ function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: st
       ws.on("error", () => {});
       ws.terminate();
       if (error) reject(error);
-      else resolve(Buffer.concat(audio));
+      else resolve({ audio: Buffer.concat(audio), words });
     };
     const onAbort = () => finish(new EdgeError(signal.reason instanceof EdgeError ? signal.reason.code : "ABORTED"));
     if (signal.aborted) return onAbort();
@@ -175,7 +201,7 @@ function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: st
       const date = edgeDate();
       ws.send(
         `X-Timestamp:${date}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
-          '{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"true","wordBoundaryEnabled":"false"},' +
+          '{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"true"},' +
           '"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}\r\n',
       );
       // "Z" after a JavaScript date is not a mistake: it is what Microsoft Edge sends.
@@ -190,8 +216,10 @@ function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: st
         const data = Buffer.isBuffer(raw) ? raw : Array.isArray(raw) ? Buffer.concat(raw) : Buffer.from(raw);
         if (!isBinary) {
           const text = data.toString("utf8");
-          const path = parseHeaders(text.slice(0, text.indexOf("\r\n\r\n"))).Path;
-          if (path === "turn.end") finish(null);
+          const split = text.indexOf("\r\n\r\n");
+          const path = parseHeaders(text.slice(0, split)).Path;
+          if (path === "audio.metadata") words.push(...parseWordBoundaries(text.slice(split + 4)));
+          else if (path === "turn.end") finish(null);
           return;
         }
         const { headers, payload } = parseBinaryFrame(data);
@@ -206,8 +234,8 @@ function synthesizePiece(piece: string, voiceId: string, rate: string, pitch: st
 
 const slots = new Semaphore(serverConfig.ttsMaxConcurrency);
 
-/** Synthesizes text with a Microsoft Edge neural voice and returns MP3 bytes. */
-export async function synthesizeEdge(opts: { text: string; voice: string; rate: string; pitch: string; signal?: AbortSignal }): Promise<Buffer> {
+/** Synthesizes text with a Microsoft Edge neural voice: MP3 bytes plus when each word is spoken. */
+export async function synthesizeEdge(opts: { text: string; voice: string; rate: string; pitch: string; signal?: AbortSignal }): Promise<Speech> {
   const release = await slots.acquire(opts.signal).catch(() => {
     throw new EdgeError("ABORTED");
   });
@@ -218,15 +246,23 @@ export async function synthesizeEdge(opts: { text: string; voice: string; rate: 
   const signal = opts.signal ? AbortSignal.any([opts.signal, deadline.signal]) : deadline.signal;
   try {
     const parts: Buffer[] = [];
+    const words: SpeechWord[] = [];
+    let offset = 0;
+    const add = (speech: Speech) => {
+      parts.push(speech.audio);
+      // Each piece's times start at 0; shift them by the audio before it.
+      for (const w of speech.words) words.push({ text: w.text, start: offset + w.start, end: offset + w.end });
+      offset += mp3DurationSeconds(speech.audio);
+    };
     for (const piece of splitByBytes(escapeXml(removeIncompatibleCharacters(opts.text)))) {
       try {
-        parts.push(await synthesizePiece(piece, opts.voice, opts.rate, opts.pitch, signal));
+        add(await synthesizePiece(piece, opts.voice, opts.rate, opts.pitch, signal));
       } catch (e) {
         // A 403 usually means our clock is off: follow the server's clock and retry once.
         if (!(e instanceof HandshakeRejected)) throw e;
         if (e.status !== 403 || !adjustClockSkew(e.date)) throw new EdgeError("ENGINE_UNAVAILABLE", e.message);
         try {
-          parts.push(await synthesizePiece(piece, opts.voice, opts.rate, opts.pitch, signal));
+          add(await synthesizePiece(piece, opts.voice, opts.rate, opts.pitch, signal));
         } catch (retry) {
           throw retry instanceof HandshakeRejected ? new EdgeError("ENGINE_UNAVAILABLE", retry.message) : retry;
         }
@@ -234,7 +270,7 @@ export async function synthesizeEdge(opts: { text: string; voice: string; rate: 
     }
     const audio = Buffer.concat(parts);
     if (audio.length < MIN_AUDIO_BYTES) throw new EdgeError("NO_AUDIO", `only ${audio.length} bytes of audio`);
-    return audio;
+    return { audio, words: words.sort((a, b) => a.start - b.start) };
   } finally {
     timeout.removeEventListener("abort", onTimeout);
     release();

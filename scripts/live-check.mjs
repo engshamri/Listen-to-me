@@ -1,14 +1,16 @@
-// End-to-end API check against a running server (needs internet, Python with
-// edge-tts, and optionally ffmpeg/ffprobe).
+// End-to-end API check against a running server (needs internet, and
+// ffmpeg/ffprobe for the conversion checks).
 //
 //   npm run test:live                       # http://127.0.0.1:3000
 //   BASE_URL=http://127.0.0.1:3210 npm run test:live
+//   SMOKE=1 BASE_URL=https://... node scripts/live-check.mjs   # quick subset (daily production check)
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3000";
+const SMOKE = process.env.SMOKE === "1";
 let failures = 0;
 const tmp = mkdtempSync(join(tmpdir(), "asmani-live-"));
 
@@ -18,7 +20,8 @@ function looksLikeMp3(b) {
   return false;
 }
 
-async function check(name, fn) {
+async function check(name, fn, { smoke = false } = {}) {
+  if (SMOKE && !smoke) return;
   const t0 = Date.now();
   try {
     const note = await fn();
@@ -52,7 +55,7 @@ await check("health reports capabilities", async () => {
   assert(typeof h.converter === "boolean", "missing converter");
   assert(Number.isFinite(h.convertMaxBytes) && h.convertMaxBytes > 0, "missing convertMaxBytes");
   return JSON.stringify(h);
-});
+}, { smoke: true });
 
 await check("Arabic speech (ar-IQ-RanaNeural) returns valid MP3", async () => {
   const r = await tts({ text: "مرحباً بكم في اسمعني. هذا اختبار للصوت العربي.", voice: "ar-IQ-RanaNeural", rate: "+0%", pitch: "+0Hz" });
@@ -62,7 +65,7 @@ await check("Arabic speech (ar-IQ-RanaNeural) returns valid MP3", async () => {
   assert(b.length > 5000 && looksLikeMp3(b), `bad audio (${b.length} bytes)`);
   arabicMp3 = b;
   return `${b.length} bytes`;
-});
+}, { smoke: true });
 
 await check("English speech with speed and pitch returns valid MP3", async () => {
   const r = await tts({ text: "Hello from Listen to me. This is an English test.", voice: "en-US-AvaMultilingualNeural", rate: "+25%", pitch: "-4Hz" });
@@ -70,7 +73,22 @@ await check("English speech with speed and pitch returns valid MP3", async () =>
   const b = new Uint8Array(await r.arrayBuffer());
   assert(looksLikeMp3(b), "not MP3");
   return `${b.length} bytes`;
-});
+}, { smoke: true });
+
+await check("word timings come with the audio (read-along)", async () => {
+  const r = await tts({ text: "Read along with me. Every word arrives with its own time.", voice: "en-US-AndrewNeural", rate: "+0%", pitch: "+0Hz", marks: true });
+  assert(r.status === 200, `HTTP ${r.status}`);
+  assert((r.headers.get("content-type") ?? "").startsWith("multipart/form-data"), `content-type ${r.headers.get("content-type")}`);
+  const form = await r.formData();
+  const audio = new Uint8Array(await form.get("audio").arrayBuffer());
+  const words = JSON.parse(form.get("words"));
+  assert(looksLikeMp3(audio), "audio is not MP3");
+  assert(words.length >= 10, `only ${words.length} words`);
+  for (let i = 1; i < words.length; i++) assert(words[i].start >= words[i - 1].start, "times go backwards");
+  const seconds = (audio.length * 8) / 48000; // 48 kbps constant bitrate
+  assert(words.at(-1).end <= seconds + 0.5, `last word ends at ${words.at(-1).end}s, audio is ${seconds.toFixed(2)}s`);
+  return `${words.length} words, "${words[0].text}" at ${words[0].start}s … "${words.at(-1).text}" ends ${words.at(-1).end}s of ${seconds.toFixed(2)}s`;
+}, { smoke: true });
 
 await check("faster rate produces shorter audio", async () => {
   const text = "The quick brown fox jumps over the lazy dog. ".repeat(4);
@@ -143,7 +161,7 @@ await check("voice preview is generated and cached", async () => {
   const b = new Uint8Array(await r2.arrayBuffer());
   assert(r2.status === 200 && looksLikeMp3(b), "bad cached preview");
   return `first ${first} ms, cached ${Date.now() - t2} ms`;
-});
+}, { smoke: true });
 
 await check("preview for a language without a hand-written sample (Icelandic)", async () => {
   const r = await fetch(`${BASE}/api/preview?voice=is-IS-GunnarNeural`);
@@ -160,7 +178,7 @@ await check("language detection", async () => {
   const d = await r.json();
   assert(d.detectedSource === "fr", `detected ${d.detectedSource}`);
   return d.detectedSource;
-});
+}, { smoke: true });
 
 await check("translation preserves paragraphs", async () => {
   const text = "مرحبا بكم.\n\nهذه فقرة ثانية.\nوهذا سطر ثالث.";
@@ -170,7 +188,7 @@ await check("translation preserves paragraphs", async () => {
   assert(d.text.split("\n\n").length === 2 && d.text.split("\n").length === 4, `structure lost: ${JSON.stringify(d.text)}`);
   assert(d.detectedSource === "ar", `detected ${d.detectedSource}`);
   return JSON.stringify(d.text);
-});
+}, { smoke: true });
 
 await check("translation rejects bad target", async () => {
   const r = await fetch(`${BASE}/api/translate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "translate", text: "hi", target: "../../x" }) });
@@ -212,7 +230,7 @@ await check("requests from other websites are refused (403)", async () => {
   assert(preview.status === 403, `preview HTTP ${preview.status}`);
   const same = await fetch(`${BASE}/api/translate`, { method: "POST", headers: { "Content-Type": "application/json", Origin: BASE, "Sec-Fetch-Site": "same-origin" }, body: JSON.stringify({ mode: "detect", text: "hello" }) });
   assert(same.status === 200, `same-origin HTTP ${same.status}`);
-});
+}, { smoke: true });
 
 await check("forged X-Forwarded-For does not bypass rate limits", async () => {
   // Without TRUST_PROXY every caller shares one budget, so rotating fake IPs gains nothing.
@@ -231,7 +249,7 @@ await check("security headers present", async () => {
   assert(r.headers.get("x-content-type-options") === "nosniff", "nosniff missing");
   assert(r.headers.get("x-frame-options") === "DENY", "frame options missing");
   assert(!r.headers.get("x-powered-by"), "x-powered-by exposed");
-});
+}, { smoke: true });
 
 rmSync(tmp, { recursive: true, force: true });
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll live checks passed");

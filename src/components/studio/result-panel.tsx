@@ -1,14 +1,20 @@
 "use client";
 
-import { Download, Film, Loader2, Music, Play, RotateCcw, Trash2, X } from "lucide-react";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { Captions, Download, Film, Loader2, Maximize2, Music, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { PLAYBACK_RATES, useSpeechSettings } from "./hooks";
 import { Notice, Panel, StepHeading } from "./primitives";
+import { ReadAlong } from "./read-along";
+import { ReadingMode } from "./reading-mode";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { downloadName } from "@/lib/audio/filename";
+import { subtitleCues, toSrt, toVtt } from "@/lib/audio/subtitles";
 import { registerExclusivePlayer } from "@/lib/audio/playback";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
+import type { Timeline } from "@/lib/tts/timeline";
 import { getVoice, voiceName, voiceSubtitle } from "@/lib/voices/catalog";
 
 export type ConvertFormat = "m4a" | "mp4";
@@ -27,6 +33,8 @@ export interface AudioResult {
   /** 1-based numbers of parts read by the backup voice. */
   backupParts: number[];
   conversions: Partial<Record<ConvertFormat, { url: string; size: number }>>;
+  /** What is spoken when, for read-along and subtitles. */
+  timeline: Timeline;
 }
 
 interface ResultPanelProps {
@@ -45,14 +53,42 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
   ref,
 ) {
   const { t, locale, fmt } = useI18n();
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Read-along and reading mode follow the element itself, so it is kept in state too.
+  const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
+  const attachAudio = useCallback((el: HTMLAudioElement | null) => {
+    audioRef.current = el;
+    setAudioEl(el);
+  }, []);
+  const [settings, setSettings] = useSpeechSettings();
+  const [readingOpen, setReadingOpen] = useState(false);
   const [converting, setConverting] = useState<{ format: ConvertFormat; ctrl: AbortController } | null>(null);
   const voice = getVoice(result.voiceId);
 
   useEffect(() => {
+    return audioEl ? registerExclusivePlayer(audioEl) : undefined;
+  }, [audioEl]);
+
+  // Listening speed changes playback only; the generated audio stays as it is.
+  useEffect(() => {
     const el = audioRef.current;
-    return el ? registerExclusivePlayer(el) : undefined;
-  }, []);
+    if (!el) return;
+    el.defaultPlaybackRate = settings.playbackRate;
+    el.playbackRate = settings.playbackRate;
+    el.preservesPitch = true;
+  }, [audioEl, settings.playbackRate, result.url]);
+
+  function downloadSubtitles(kind: "srt" | "vtt") {
+    const cues = subtitleCues(result.timeline);
+    // A byte-order mark helps desktop players pick UTF-8 for Arabic and other scripts.
+    const body = kind === "srt" ? String.fromCharCode(0xfeff) + toSrt(cues) : toVtt(cues);
+    const url = URL.createObjectURL(new Blob([body], { type: kind === "srt" ? "application/x-subrip" : "text/vtt" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileBase(kind);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   // Cancel an in-flight conversion if another result is opened or the panel unmounts.
   const convertCtrl = useRef<AbortController | null>(null);
@@ -127,7 +163,7 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
       </StepHeading>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <audio ref={audioRef} src={result.url} controls preload="metadata" className="h-11 w-full min-w-0 flex-1" aria-label={t("result.title")} />
+        <audio ref={attachAudio} src={result.url} controls preload="metadata" className="h-11 w-full min-w-0 flex-1" aria-label={t("result.title")} />
         <Button
           variant="outline"
           onClick={() => {
@@ -140,6 +176,21 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
           <RotateCcw aria-hidden />
           {t("result.restart")}
         </Button>
+        <label className="sr-only" htmlFor="result-speed">
+          {t("readAlong.speed")}
+        </label>
+        <select
+          id="result-speed"
+          value={settings.playbackRate}
+          onChange={(e) => setSettings({ playbackRate: Number(e.target.value) })}
+          className="border-input bg-background h-10 rounded-md border px-2 text-sm"
+        >
+          {PLAYBACK_RATES.map((r) => (
+            <option key={r} value={r}>
+              {t("readAlong.speedValue", { n: fmt.number(r) })}
+            </option>
+          ))}
+        </select>
       </div>
 
       {(partial || result.backupParts.length > 0) && (
@@ -147,6 +198,42 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
           {partial && <p>{t("result.partial", { done: result.partsDone, total: result.partsTotal })}</p>}
           {result.backupParts.length > 0 && <p>{t("result.backupUsed", { parts: result.backupParts.map((p) => fmt.number(p)).join(", ") })}</p>}
         </Notice>
+      )}
+
+      {result.timeline.sentences.length > 0 && (
+        <section aria-labelledby="read-along-title" className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 id="read-along-title" className="text-sm font-semibold">
+              {t("readAlong.title")}
+            </h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-muted-foreground flex items-center gap-2 text-[13px]">
+                <Switch checked={settings.readAlong} onCheckedChange={(v) => setSettings({ readAlong: v })} />
+                {t("readAlong.highlight")}
+              </label>
+              <Button variant="outline" size="sm" onClick={() => setReadingOpen(true)}>
+                <Maximize2 aria-hidden />
+                {t("readAlong.fullScreen")}
+              </Button>
+            </div>
+          </div>
+          {settings.readAlong && (
+            <>
+              <ReadAlong
+                timeline={result.timeline}
+                audio={audioEl}
+                follow
+                label={t("readAlong.region")}
+                className="bg-background max-h-72 rounded-lg border px-4 py-3 text-[15px] sm:text-base"
+              />
+              <p className="text-muted-foreground text-[12px] leading-relaxed">
+                {t("readAlong.hint")}
+                {result.timeline.approximate && ` ${t("readAlong.approximate")}`}
+              </p>
+            </>
+          )}
+          <ReadingMode open={readingOpen} onOpenChange={setReadingOpen} audio={audioEl} timeline={result.timeline} duration={result.duration} />
+        </section>
       )}
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
@@ -169,7 +256,7 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
         </Button>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {formats.map(({ format, label, ready, hint, icon: Icon }) => {
           const done = result.conversions[format];
           const busy = converting?.format === format;
@@ -201,6 +288,20 @@ export const ResultPanel = forwardRef<HTMLElement, ResultPanelProps>(function Re
             </div>
           );
         })}
+        {result.timeline.sentences.length > 0 && (
+          <div className="rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => downloadSubtitles("srt")}>
+                <Captions aria-hidden />
+                {t("readAlong.srt")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadSubtitles("vtt")}>
+                {t("readAlong.vtt")}
+              </Button>
+            </div>
+            <p className="text-muted-foreground mt-2 text-[13px] leading-relaxed">{t("readAlong.subtitlesHint")}</p>
+          </div>
+        )}
       </div>
 
       {history.length > 0 && (

@@ -10,7 +10,11 @@
  *    (i.e. after the user explicitly agreed); parts it reads are recorded.
  *  - Aborting cancels every in-flight request; the server then closes its
  *    connection to the speech service.
+ *  - Each chunk comes back with its word timings (for read-along), when the
+ *    voice provides them.
  */
+
+import type { SpeechWord } from "@/lib/text/align";
 
 export type EngineKind = "edge" | "backup";
 
@@ -33,6 +37,8 @@ export interface Job {
   settings: JobSettings;
   chunks: string[];
   audio: (ArrayBuffer | null)[];
+  /** Word timings per chunk, relative to that chunk's audio; null when none were sent. */
+  words: (SpeechWord[] | null)[];
   engines: (EngineKind | null)[];
   allowBackup: boolean;
 }
@@ -59,7 +65,7 @@ class ChunkError extends Error {
 }
 
 export function createJob(settings: JobSettings, chunks: string[]): Job {
-  return { settings, chunks, audio: chunks.map(() => null), engines: chunks.map(() => null), allowBackup: false };
+  return { settings, chunks, audio: chunks.map(() => null), words: chunks.map(() => null), engines: chunks.map(() => null), allowBackup: false };
 }
 
 export function completedCount(job: Job): number {
@@ -86,13 +92,30 @@ const sleep = (ms: number, signal: AbortSignal) =>
     );
   });
 
-async function requestChunk(text: string, settings: JobSettings, engine: EngineKind, signal: AbortSignal): Promise<ArrayBuffer> {
+interface ChunkAudio {
+  audio: ArrayBuffer;
+  words: SpeechWord[] | null;
+}
+
+/** The server answers with plain MP3, or with multipart "audio" + "words" when timings were requested. */
+async function readSpeech(res: Response): Promise<ChunkAudio> {
+  if (!(res.headers.get("Content-Type") ?? "").startsWith("multipart/form-data")) return { audio: await res.arrayBuffer(), words: null };
+  const form = await res.formData();
+  const audio = form.get("audio");
+  const words = form.get("words");
+  return {
+    audio: audio instanceof Blob ? await audio.arrayBuffer() : new ArrayBuffer(0),
+    words: typeof words === "string" ? (JSON.parse(words) as SpeechWord[]) : null,
+  };
+}
+
+async function requestChunk(text: string, settings: JobSettings, engine: EngineKind, signal: AbortSignal): Promise<ChunkAudio> {
   let res: Response;
   try {
     res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voice: settings.voiceId, rate: settings.rate, pitch: settings.pitch, engine }),
+      body: JSON.stringify({ text, voice: settings.voiceId, rate: settings.rate, pitch: settings.pitch, engine, marks: true }),
       signal,
     });
   } catch (e) {
@@ -100,9 +123,15 @@ async function requestChunk(text: string, settings: JobSettings, engine: EngineK
     throw new ChunkError("NETWORK", true);
   }
   if (res.ok) {
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength < 300) throw new ChunkError("NO_AUDIO", false);
-    return buf;
+    let speech: ChunkAudio;
+    try {
+      speech = await readSpeech(res);
+    } catch (e) {
+      if (signal.aborted) throw e;
+      throw new ChunkError("NETWORK", true);
+    }
+    if (speech.audio.byteLength < 300) throw new ChunkError("NO_AUDIO", false);
+    return speech;
   }
   const body = (await res.json().catch(() => ({}))) as { error?: { code?: string; fallbackAvailable?: boolean; retryAfter?: number } };
   const code = body.error?.code;
@@ -149,7 +178,9 @@ export async function runJob(job: Job, { signal, concurrency = 3, maxAttempts = 
     let rateWaits = 0;
     for (;;) {
       try {
-        job.audio[index] = await requestChunk(job.chunks[index], job.settings, "edge", signal);
+        const speech = await requestChunk(job.chunks[index], job.settings, "edge", signal);
+        job.audio[index] = speech.audio;
+        job.words[index] = speech.words;
         job.engines[index] = "edge";
         return;
       } catch (e) {
@@ -168,7 +199,9 @@ export async function runJob(job: Job, { signal, concurrency = 3, maxAttempts = 
         }
         if (job.allowBackup && e.fallbackAvailable) {
           try {
-            job.audio[index] = await requestChunk(job.chunks[index], job.settings, "backup", signal);
+            const speech = await requestChunk(job.chunks[index], job.settings, "backup", signal);
+            job.audio[index] = speech.audio;
+            job.words[index] = speech.words;
             job.engines[index] = "backup";
             return;
           } catch (backupErr) {

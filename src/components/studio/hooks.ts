@@ -27,9 +27,18 @@ export interface SpeechSettings {
   speed: number;
   pitch: number;
   pauses: boolean;
+  /** Highlight the text while it is read (read-along). */
+  readAlong: boolean;
+  /** Listening speed of the player (changes playback only, not the generated audio). */
+  playbackRate: number;
+  /** Text size step in the full-screen reading mode. */
+  readingSize: number;
 }
 
-export const DEFAULT_SETTINGS: SpeechSettings = { voiceId: DEFAULT_VOICE_ID, speed: 1, pitch: 0, pauses: true };
+export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
+export const READING_SIZES = [18, 21, 24, 28, 32] as const;
+
+export const DEFAULT_SETTINGS: SpeechSettings = { voiceId: DEFAULT_VOICE_ID, speed: 1, pitch: 0, pauses: true, readAlong: true, playbackRate: 1, readingSize: 1 };
 
 function clamp(n: unknown, min: number, max: number, fallback: number): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
@@ -47,6 +56,9 @@ function loadSettings(): SpeechSettings {
     speed: clamp(saved?.speed, 0.5, 2, 1),
     pitch: clamp(saved?.pitch, -20, 20, 0),
     pauses: typeof saved?.pauses === "boolean" ? saved.pauses : true,
+    readAlong: typeof saved?.readAlong === "boolean" ? saved.readAlong : true,
+    playbackRate: PLAYBACK_RATES.includes(saved?.playbackRate as (typeof PLAYBACK_RATES)[number]) ? saved!.playbackRate! : 1,
+    readingSize: Math.round(clamp(saved?.readingSize, 0, READING_SIZES.length - 1, 1)),
   };
 }
 

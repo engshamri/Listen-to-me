@@ -8,6 +8,7 @@ import {
   escapeXml,
   fullVoiceName,
   parseBinaryFrame,
+  parseWordBoundaries,
   removeIncompatibleCharacters,
   splitByBytes,
   synthesizeEdge,
@@ -64,6 +65,17 @@ describe("speech request helpers", () => {
     const ssml = buildSsml("ar-SA-HamedNeural", "+10%", "-5Hz", "مرحبا &amp; أهلاً");
     expect(ssml).toContain("<voice name='Microsoft Server Speech Text to Speech Voice (ar-SA, HamedNeural)'>");
     expect(ssml).toContain("<prosody pitch='-5Hz' rate='+10%' volume='+0%'>مرحبا &amp; أهلاً</prosody>");
+  });
+
+  it("reads word boundaries from metadata in seconds, unescaped, ignoring other events", () => {
+    const body = JSON.stringify({
+      Metadata: [
+        { Type: "WordBoundary", Data: { Offset: 4_625_000, Duration: 1_000_000, text: { Text: "&amp;", Length: 5, BoundaryType: "WordBoundary" } } },
+        { Type: "SentenceBoundary", Data: { Offset: 0, Duration: 5, text: { Text: "x" } } },
+        { Type: "SessionEnd", Data: {} },
+      ],
+    });
+    expect(parseWordBoundaries(body)).toEqual([{ text: "&", start: 0.4625, end: 0.5625 }]);
   });
 
   it("parses binary frames: 2-byte header length, headers, payload", () => {
@@ -124,6 +136,17 @@ describe("speech session against a local mock service", () => {
     return Buffer.concat([len, head, Buffer.alloc(bytes, 7)]);
   };
   const text = (path: string) => `X-RequestId:x\r\nPath:${path}\r\n\r\n{}`;
+  /** Real MPEG-2 Layer III frames (24 kHz, 48 kbps, mono: 144 bytes, 24 ms each), so durations can be measured. */
+  const mp3Frames = (count: number) => {
+    const frame = Buffer.concat([Buffer.from([0xff, 0xf3, 0x64, 0xc4]), Buffer.alloc(140)]);
+    const head = Buffer.from("Content-Type:audio/mpeg\r\nPath:audio\r\n");
+    const len = Buffer.alloc(2);
+    len.writeUInt16BE(head.length);
+    return Buffer.concat([len, head, ...Array.from({ length: count }, () => frame)]);
+  };
+  const wordEvent = (word: string, startSec: number, durSec: number) =>
+    `X-RequestId:x\r\nContent-Type:application/json; charset=utf-8\r\nPath:audio.metadata\r\n\r\n` +
+    JSON.stringify({ Metadata: [{ Type: "WordBoundary", Data: { Offset: startSec * 1e7, Duration: durSec * 1e7, text: { Text: word, Length: word.length, BoundaryType: "WordBoundary" } } }] });
 
   beforeAll(async () => {
     server = new WebSocketServer({
@@ -165,7 +188,7 @@ describe("speech session against a local mock service", () => {
       ws.send(audioFrame(400));
       ws.send(text("turn.end"));
     };
-    const audio = await run("Tom & Jerry");
+    const { audio } = await run("Tom & Jerry");
     expect(audio.length).toBe(800);
     expect(received).toContain("(en-US, AvaNeural)");
     expect(received).toContain("Tom &amp; Jerry");
@@ -178,7 +201,7 @@ describe("speech session against a local mock service", () => {
     };
     const before = connections;
     rejectNext = { status: 403, date: new Date().toUTCString() };
-    expect((await run()).length).toBe(600);
+    expect((await run()).audio.length).toBe(600);
     expect(connections - before).toBe(2);
   });
 
@@ -190,6 +213,25 @@ describe("speech session against a local mock service", () => {
     expect(await code(run())).toBe("ENGINE_UNAVAILABLE");
     behavior = (ws) => ws.send(text("turn.end"));
     expect(await code(run())).toBe("NO_AUDIO");
+  });
+
+  it("collects word timings and shifts them across 4096-byte pieces by the audio before", async () => {
+    let calls = 0;
+    behavior = (ws) => {
+      calls++;
+      const first = calls === 1;
+      ws.send(mp3Frames(first ? 50 : 25)); // 1.2 s, then 0.6 s
+      ws.send(wordEvent(first ? "Tom" : "&amp;", first ? 0.1 : 0.2, 0.3));
+      ws.send(text("turn.end"));
+    };
+    const long = `${"word ".repeat(900)}${"more ".repeat(10)}`; // over 4096 bytes: two pieces
+    const { audio, words } = await run(long);
+    expect(calls).toBe(2);
+    expect(audio.length).toBe(75 * 144);
+    expect(words.map((w) => w.text)).toEqual(["Tom", "&"]);
+    expect(words[0].start).toBeCloseTo(0.1, 5);
+    expect(words[1].start).toBeCloseTo(1.2 + 0.2, 5);
+    expect(words[1].end).toBeCloseTo(1.2 + 0.5, 5);
   });
 
   it("stops when the caller aborts", async () => {

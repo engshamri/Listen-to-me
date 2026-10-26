@@ -136,7 +136,7 @@ export function GeneratePanel(props: GeneratePanelProps) {
             <Button size="lg" className="w-full text-[15px] font-semibold aria-disabled:opacity-60" onClick={props.onGenerate} aria-describedby={disabledReason ? "generate-reason" : "generate-privacy"} aria-disabled={Boolean(disabledReason) || undefined}>
               <AudioLines className="size-5" aria-hidden />
               {t("generate.button")}
-              <span className="ms-1 hidden items-center gap-1 text-[12px] font-normal opacity-80 lg:inline-flex" aria-hidden>
+              <span className="ms-1 hidden items-center gap-1 text-[12px] font-normal lg:inline-flex" aria-hidden>
                 Ctrl+Enter
               </span>
             </Button>

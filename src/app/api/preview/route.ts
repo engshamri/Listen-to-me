@@ -25,7 +25,7 @@ async function sampleText(voice: Voice): Promise<string> {
 
 async function generate(voice: Voice, file: string): Promise<Buffer> {
   const text = await sampleText(voice);
-  const audio = await synthesizeEdge({ text, voice: voice.id, rate: "+0%", pitch: "+0Hz" });
+  const { audio } = await synthesizeEdge({ text, voice: voice.id, rate: "+0%", pitch: "+0Hz" });
   // Caching is best effort: a read-only or full disk must not cost the visitor the preview.
   try {
     await mkdir(path.dirname(file), { recursive: true });

@@ -13,7 +13,7 @@ scripts/
   generate-donation-qr.mjs   QR codes for /support (public/donate/*.svg and *.png) from donations.json
   copy-vendor-assets.mjs     Copies the pdf.js worker and the OCR engine (tesseract.js worker,
                              WebAssembly cores, Arabic/English data) into public/ (git-ignored)
-  live-check.mjs             End-to-end API checks against a running server
+  live-check.mjs             End-to-end API checks against a running server (SMOKE=1: the daily subset)
   voice-qa/run_audit.py      Voice quality audit (audio checks + speech recognition) → voice-quality.json
   voice-qa/reliability.py    Repeated synthesis attempts for voices that fail intermittently
   voice-qa/apply_ratings.py  Applies human listening ratings exported from the review sheet
@@ -32,12 +32,14 @@ src/
   lib/
     i18n/                    Typed dictionaries (en, ar), plural rules, formatters, provider
     theme/                   Theme list, provider, WCAG contrast helpers
-    text/                    Chunking, statistics, search normalization, clean-up, line splitting
+    text/                    Chunking, statistics, search normalization, clean-up, line splitting,
+                             word alignment for read-along (align.ts)
     files/                   TXT decoding, PDF extraction, OCR of scanned pages, limits
     voices/                  Catalog access/filters, language categories, favorites store,
                              audit verdicts (quality.ts), preview samples, backup-voice mapping
     tts/engine.ts            Client generation engine (concurrency, retry, resume, cancel)
-    audio/                   MP3 parsing/duration, exclusive playback, file names
+    tts/timeline.ts          Read-along timeline: word and sentence times across all parts
+    audio/                   MP3 parsing/duration, exclusive playback, file names, SRT/WebVTT
     translate/languages.ts   Target languages, localized labels
     server/                  Config, HTTP helpers, rate limiter, semaphore, process runner,
                              speech service client (edge.ts) and its token (edge-drm.ts),
@@ -65,7 +67,9 @@ tests/
 | `preview-context.tsx` | One shared preview player for the whole app |
 | `settings-panel.tsx` | Speed, pitch, pauses |
 | `generate-panel.tsx` | Generate / progress / cancel / failure recovery (sticky bar on mobile) |
-| `result-panel.tsx` | Player, metadata, downloads, conversions, session history |
+| `result-panel.tsx` | Player, listening speed, read-along section, metadata, downloads, subtitles, conversions, session history |
+| `read-along.tsx` | `useReadAlong` (current sentence and word from the audio element) and the highlighted text view |
+| `reading-mode.tsx` | Full-screen reading dialog: large text, size control, seek bar, previous/next sentence, keyboard |
 | `hooks.ts` | Settings store (useSyncExternalStore + localStorage), draft autosave, health, timers |
 
 ## Generation flow
@@ -76,16 +80,27 @@ tests/
 4. Cancel aborts all requests; the route handler sees `request.signal` abort and closes its connection to the speech service.
 5. Chunks are joined into one MP3 (same codec settings throughout); duration is measured from the MP3 frames.
 
+## Read-along
+
+The browser asks `/api/tts` for word timings with `"marks": true`. The response is then `multipart/form-data` with two parts: `audio` (the MP3) and `words` (JSON `[{ text, start, end }]`, seconds). Without `marks` the response stays plain `audio/mpeg`, so other callers are unaffected. The backup voice returns an empty `words` list.
+
+1. **On the server**, `edge.ts` turns on `wordBoundaryEnabled` in `speech.config` and reads the `audio.metadata` frames: each `WordBoundary` event has an offset and a duration in 100 ns ticks and the word as written (XML-escaped). When the text is split into 4,096-byte pieces, each piece's times are shifted by the measured length of the audio before it.
+2. **In the studio**, the text is snapshotted when generation starts, with the chunks as displayed (before `prepareForSpeech` adds pauses).
+3. **`buildTimeline`** (`lib/tts/timeline.ts`) shifts each chunk's words by the running MP3 duration of the earlier chunks (`mp3DurationSeconds`; joined length equals the sum of the parts). `alignWords` (`lib/text/align.ts`) then matches each word to the next occurrence in the displayed text, looking at most 160 characters ahead and skipping words it can't find, such as the full stops added for pauses. Sentences come from the same `splitSentences` used for chunking; each runs until the next one starts. Chunks without words (backup voice) are estimated in proportion to their characters, and the timeline is marked `approximate`.
+4. **`ReadAlong`** renders memoized sentence spans and splits only the current sentence into words, so very long texts stay fast. While playing, a `requestAnimationFrame` loop finds the sentence and word with a binary search (`locate`) and re-renders only when they change. The current sentence carries `aria-current`. Auto-scroll pauses for 4 s after the reader scrolls and doesn't animate with reduced motion.
+5. **Reading mode** and the result panel control the same `<audio>` element, so exclusive playback still holds. Listening speed uses `playbackRate` with `preservesPitch`. Playback controls stay left-to-right in Arabic, as in media players.
+6. **Subtitles** (`lib/audio/subtitles.ts`): one cue per sentence. Sentences over 84 characters are split at word times, and lines wrap at 42 characters.
+
 ## Speech service client
 
 `src/lib/server/edge.ts` implements the WebSocket protocol of Microsoft Edge's read-aloud service (the one the edge-tts project documents):
 
 1. The text is cleaned of control characters the service rejects, XML-escaped, and split into pieces of at most 4,096 bytes (at a line break or space, never inside a character or an entity).
 2. Each piece opens a connection to `speech.platform.bing.com` with the browser's origin and user agent, a random `muid` cookie and a `Sec-MS-GEC` token. `edge-drm.ts` derives the token from the current five-minute window: a SHA-256 and a 64-bit checksum over Microsoft's copyright line, the window in Windows file-time ticks and the public client token. Unit tests compare it with tokens produced by edge-tts.
-3. The client sends a `speech.config` message (48 kbit/s mono MP3) and the SSML, then collects binary `audio` frames until `turn.end`.
+3. The client sends a `speech.config` message (48 kbit/s mono MP3, word boundaries on) and the SSML, then collects binary `audio` frames and `audio.metadata` word timings until `turn.end`.
 4. Failures map to the API's error codes: a 403 handshake re-syncs the token clock with the server's `Date` header and retries once; a connection closed before `turn.end` is retryable; `turn.end` with no audio is `NO_AUDIO`; 45 s without any data is a stall (`TIMEOUT`); the whole request is capped by `TTS_TIMEOUT_SECONDS` (240).
 
-When Microsoft ships a new Edge version the token scheme can change; `CHROMIUM_FULL_VERSION` and the token code in `edge-drm.ts` are the places to update.
+When Microsoft ships a new Edge version the token scheme can change; `CHROMIUM_FULL_VERSION` and the token code in `edge-drm.ts` are the places to update. The daily workflow `.github/workflows/production-check.yml` runs `scripts/live-check.mjs` with `SMOKE=1` against the public site and opens (or comments on) an issue titled "Production check failed" when a check fails. GitHub turns off scheduled workflows in a public repository after 60 days without activity; re-enable it on the Actions tab if that happens.
 
 ## Running on Vercel
 

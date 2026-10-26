@@ -24,6 +24,10 @@ export const CONTRAST_PAIRS: [string, string, number][] = [
   ["primary", "card", 4.5],
   ["primary", "background", 4.5],
   ["primary-soft-foreground", "primary-soft", 4.5],
+  // Read-along: the current sentence sits on primary-soft, with words already read
+  // in foreground and words still to come in muted-foreground.
+  ["foreground", "primary-soft", 4.5],
+  ["muted-foreground", "primary-soft", 4.5],
   ["destructive", "card", 4.5],
   ["destructive", "destructive-soft", 4.5],
   ["destructive-foreground", "destructive", 4.5],
