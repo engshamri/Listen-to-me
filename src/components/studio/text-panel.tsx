@@ -30,17 +30,23 @@ const SCRIPT_LANG: Partial<Record<Script, string>> = {
   Khmer: "km", Myanmar: "my", Georgian: "ka", Ethiopic: "am", Sinhala: "si", CanadianSyllabics: "iu",
 };
 
-/** Toolbar button: icon-only with a tooltip on narrow screens, icon + label on wide ones. */
-function ToolButton({ icon: Icon, label, onClick }: { icon: typeof FileUp; label: string; onClick: () => void }) {
+/** Look of the text tools: icon with its name always visible under it, at least 44 × 44 px. */
+const TOOL_CLASS = "h-auto min-h-11 min-w-11 flex-col gap-0.5 px-1 py-1 text-[12px] leading-tight font-medium whitespace-normal [&_svg:not([class*='size-'])]:size-[18px]";
+
+/**
+ * A text tool. The visible name is the button's accessible name; the tooltip
+ * (hover or keyboard focus) only adds what the tool does.
+ */
+function ToolButton({ icon: Icon, label, hint, onClick, disabled, destructive }: { icon: typeof FileUp; label: string; hint: string; onClick: () => void; disabled?: boolean; destructive?: boolean }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="sm" onClick={onClick} aria-label={label} className="px-2.5">
+        <Button variant={destructive ? "destructive" : "ghost"} onClick={onClick} disabled={disabled} className={TOOL_CLASS}>
           <Icon aria-hidden />
-          <span className="hidden xl:inline">{label}</span>
+          <span>{label}</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="xl:hidden">{label}</TooltipContent>
+      <TooltipContent>{hint}</TooltipContent>
     </Tooltip>
   );
 }
@@ -159,26 +165,30 @@ export function TextPanel({ text, onTextChange, replaceText, voice, speed, onGen
   const showVoiceHint = translation && targetHasVoices && baseLanguage(translation.to) !== voice.lang && !voice.multilingual;
 
   function insertSample() {
+    // Replacing existing text offers Undo; into an empty editor it just says what happened.
     if (textRef.current.trim()) replaceText(t("editor.sampleText"), t("editor.sampleInserted"));
-    else onTextChange(t("editor.sampleText"));
+    else {
+      onTextChange(t("editor.sampleText"));
+      toast.success(t("editor.sampleInserted"));
+    }
   }
 
   const toolbar = (
-    <div className="flex items-center gap-0.5">
-      <ToolButton icon={FileUp} label={t("editor.upload")} onClick={() => importer.openPicker()} />
-      <ToolButton icon={ClipboardPaste} label={t("editor.paste")} onClick={() => void paste()} />
-      <ToolButton icon={Sparkles} label={t("editor.sample")} onClick={insertSample} />
+    <div role="group" aria-label={t("editor.tools")} className="grid w-full grid-cols-5 gap-1 sm:flex sm:w-auto sm:items-start">
+      <ToolButton icon={FileUp} label={t("editor.upload")} hint={t("editor.uploadHint")} onClick={() => importer.openPicker()} />
+      <ToolButton icon={ClipboardPaste} label={t("editor.paste")} hint={t("editor.pasteHint")} onClick={() => void paste()} />
+      <ToolButton icon={Sparkles} label={t("editor.sample")} hint={t("editor.sampleHint")} onClick={insertSample} />
       <DropdownMenu>
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" aria-label={t("editor.cleanup")} className="px-2.5" disabled={!text.trim()}>
+              <Button variant="ghost" className={TOOL_CLASS} disabled={!text.trim()}>
                 <Wand2 aria-hidden />
-                <span className="hidden xl:inline">{t("editor.cleanup")}</span>
+                <span>{t("editor.cleanup")}</span>
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
-          <TooltipContent className="xl:hidden">{t("editor.cleanup")}</TooltipContent>
+          <TooltipContent>{t("editor.cleanupHint")}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => cleanup("whitespace")}>{t("editor.cleanupWhitespace")}</DropdownMenuItem>
@@ -187,26 +197,19 @@ export function TextPanel({ text, onTextChange, replaceText, voice, speed, onGen
           <DropdownMenuItem onSelect={() => cleanup("emoji")}>{t("editor.cleanupEmoji")}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="px-2.5"
-            aria-label={t("editor.clear")}
-            disabled={!text}
-            onClick={() => {
-              setFile(null);
-              setTranslation(null);
-              replaceText("", t("editor.cleared"));
-            }}
-          >
-            <Trash2 aria-hidden />
-            <span className="hidden xl:inline">{t("editor.clear")}</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent className="xl:hidden">{t("editor.clear")}</TooltipContent>
-      </Tooltip>
+      {/* Clearing offers Undo in the notification (replaceText), so nothing is lost by accident. */}
+      <ToolButton
+        icon={Trash2}
+        destructive
+        label={t("editor.clear")}
+        hint={t("editor.clearHint")}
+        disabled={!text}
+        onClick={() => {
+          setFile(null);
+          setTranslation(null);
+          replaceText("", t("editor.cleared"));
+        }}
+      />
     </div>
   );
 
