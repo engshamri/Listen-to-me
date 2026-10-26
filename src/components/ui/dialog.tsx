@@ -35,25 +35,64 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
   )
 }
 
+/**
+ * The part of the screen not covered by the on-screen keyboard. iOS Safari
+ * keeps the layout viewport when the keyboard opens, so a dialog centred in
+ * it ends up under the keyboard; this follows the visual viewport instead.
+ * Null while nothing covers the page.
+ */
+function useVisibleArea(): { top: number; height: number } | null {
+  const [area, setArea] = React.useState<{ top: number; height: number } | null>(null)
+  React.useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      const covered = window.innerHeight - vv.height > 80
+      setArea(covered ? { top: vv.offsetTop, height: vv.height } : null)
+    }
+    update()
+    vv.addEventListener("resize", update)
+    vv.addEventListener("scroll", update)
+    return () => {
+      vv.removeEventListener("resize", update)
+      vv.removeEventListener("scroll", update)
+    }
+  }, [])
+  return area
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
   closeLabel = "Close",
+  style,
+  onFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   closeLabel?: string
 }) {
+  const area = useVisibleArea()
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 scroll-thin fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border p-6 shadow-lg duration-200 sm:max-w-lg",
+          // grid-cols-1 is minmax(0, 1fr): long unbreakable content (a file name) can't widen the dialog past the screen.
+          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 scroll-thin fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100%-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 grid-cols-1 gap-4 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border p-4 shadow-lg duration-200 sm:max-w-lg sm:p-6",
           className
         )}
+        style={area ? { ...style, top: area.top + area.height / 2, maxHeight: area.height - 16 } : style}
+        onFocus={(e) => {
+          onFocus?.(e)
+          // Keep the field being typed in visible once the keyboard has opened.
+          const target = e.target
+          if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+            window.setTimeout(() => target.isConnected && target.scrollIntoView({ block: "nearest" }), 350)
+          }
+        }}
         {...props}
       >
         {children}

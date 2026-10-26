@@ -9,6 +9,8 @@
  *  - list items and headings stay separate paragraphs.
  */
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
+import { orderLineItems } from "@/lib/files/pdf";
+import { arabicLetters } from "@/lib/text/arabic-letters";
 
 export type ParagraphKind = "text" | "heading" | "list" | "code" | "math" | "table";
 
@@ -62,16 +64,7 @@ function isRtl(items: TextItem[]): boolean {
   return rtl > ltr;
 }
 
-/**
- * Many PDF fonts map the dotted (initial and medial) form of Arabic yeh and kaf
- * to the Persian letters ی and ک, which breaks search, speech and copying. In
- * text without Persian-only letters (پ چ ژ گ), use the Arabic letters.
- */
-export function arabicLetters(text: string): string {
-  // The same happens with heh: the Urdu ھ for the Arabic ه (unless the text is Urdu).
-  if (/[پچژگٹڈڑںےۓ]/u.test(text) || !/[یکھ]/u.test(text)) return text;
-  return text.replace(/ی/gu, "ي").replace(/ک/gu, "ك").replace(/ھ/gu, "ه");
-}
+export { arabicLetters } from "@/lib/text/arabic-letters";
 
 /** True for lines that read as a formula: math symbols and few words. */
 export function looksLikeMath(text: string): boolean {
@@ -104,16 +97,8 @@ function buildLines(items: TextItem[], monoFonts: Set<string>): Line[] {
   for (const g of groups) {
     if (!g.items.length) continue;
     const rtl = isRtl(g.items);
-    // Diacritics drawn as their own items (Arabic shadda, damma…) belong to the letter whose
-    // centre is nearest; sorting them by position alone can put them on the neighbouring letter.
-    const isMark = (i: TextItem) => /^\p{M}+$/u.test(i.str);
-    const sorted = g.items.filter((i) => !isMark(i)).sort((a, b) => (rtl ? b.transform[4] - a.transform[4] : a.transform[4] - b.transform[4]));
-    const marksOf = new Map<TextItem, string>();
-    for (const m of g.items.filter(isMark)) {
-      const x = m.transform[4] + m.width / 2;
-      const base = sorted.filter((i) => i.str.trim()).reduce<TextItem | null>((best, i) => (!best || Math.abs(i.transform[4] + i.width / 2 - x) < Math.abs(best.transform[4] + best.width / 2 - x) ? i : best), null);
-      if (base) marksOf.set(base, (marksOf.get(base) ?? "") + m.str);
-    }
+    // Diacritics drawn as their own items go with the nearest letter (see orderLineItems).
+    const { sorted, text: withMarks } = orderLineItems(g.items, rtl);
     let text = "";
     const cells: string[] = [""];
     let last: TextItem | null = null;
@@ -136,8 +121,7 @@ function buildLines(items: TextItem[], monoFonts: Set<string>): Line[] {
         if (gap > g.height * 0.15 && !/\s$/u.test(text) && !/^[\s\p{M}]/u.test(it.str)) text += " ";
       }
       wideSpace = false;
-      // In right-to-left lines, an item may start with the mark of its first letter (visual order).
-      text += (rtl ? it.str.replace(/^(\p{M}+)(\p{L})/u, "$2$1") : it.str) + (marksOf.get(it) ?? "");
+      text += withMarks(it);
       cells[cells.length - 1] += (cells[cells.length - 1] && !/^\s/u.test(it.str) ? " " : "") + it.str;
       const n = it.str.replace(/\s/gu, "").length;
       chars += n;

@@ -20,9 +20,10 @@ import { WorkspaceContext, type WorkspaceApi } from "./workspace-context";
 import { Notice } from "@/components/studio/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MAX_OCR_PAGES } from "@/lib/files/limits";
+import { MAX_OCR_PAGES, MAX_PDF_BYTES } from "@/lib/files/limits";
 import { recognizePdfPages } from "@/lib/files/ocr";
-import { destroyPdf, openPdf } from "@/lib/files/pdf";
+import { classifyPdfError, destroyPdf, openPdf, type PdfErrorCode } from "@/lib/files/pdf";
+import { PDF_ERROR_KEYS } from "@/lib/files/pdf-messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { ocrParagraphs } from "@/lib/study/import";
 import { UNTRANSLATED_KINDS, type Box } from "@/lib/study/layout";
@@ -49,11 +50,11 @@ export function Workspace({ id, initialPage }: { id: string; initialPage?: numbe
 }
 
 function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number }) {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const { data, error } = useLecture(id);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   /** "missing": the lecture was restored from a backup without its PDF. */
-  const [pdfFailed, setPdfFailed] = useState<false | "invalid" | "missing">(false);
+  const [pdfFailed, setPdfFailed] = useState<false | PdfErrorCode | "missing">(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -67,7 +68,12 @@ function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number 
         opened = doc;
         setPdf(doc);
       })
-      .catch((e: unknown) => alive && setPdfFailed((e as { code?: string })?.code === "NOT_FOUND" ? "missing" : "invalid"));
+      .catch((e: unknown) => {
+        if (!alive) return;
+        if ((e as { code?: string })?.code === "NOT_FOUND") return setPdfFailed("missing");
+        console.warn("[pdf] lecture open failed:", classifyPdfError(e), (e as Error)?.message);
+        setPdfFailed(classifyPdfError(e));
+      });
     return () => {
       alive = false;
       if (opened) destroyPdf(opened);
@@ -86,8 +92,8 @@ function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number 
       await attachFile(id, new Blob([buffer], { type: "application/pdf" }));
       setPdfFailed(false);
       setAttempt((n) => n + 1);
-    } catch {
-      toast.error(t("pdf.invalid"));
+    } catch (e) {
+      toast.error(t(PDF_ERROR_KEYS[classifyPdfError(e)], { max: fmt.bytes(MAX_PDF_BYTES) }));
     }
   }
 
@@ -113,7 +119,7 @@ function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number 
       </main>
     );
   }
-  return <Loaded key={data.doc.id} data={data} pdf={pdf} initialPage={initialPage} missingPdf={pdfFailed === "missing" ? (file) => void reattach(file) : null} />;
+  return <Loaded key={data.doc.id} data={data} pdf={pdf} initialPage={initialPage} missingPdf={pdfFailed === "missing" ? (file) => void reattach(file) : null} pdfError={pdfFailed && pdfFailed !== "missing" ? pdfFailed : null} />;
 }
 
 function Loaded({
@@ -121,14 +127,17 @@ function Loaded({
   pdf,
   initialPage,
   missingPdf,
+  pdfError,
 }: {
   data: Exclude<ReturnType<typeof useLecture>["data"], "missing" | null>;
   pdf: PDFDocumentProxy | null;
   initialPage?: number;
   /** Set when the PDF is not on this device: lets the student choose it again. */
   missingPdf: ((file: File) => void) | null;
+  /** Why the PDF could not be opened (the text panels still work). */
+  pdfError: PdfErrorCode | null;
 }) {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const ask = useConsent();
   const [settings, setSettings] = useStudySettings();
   const { doc, pages, annotations } = data;
@@ -437,7 +446,7 @@ function Loaded({
                 </Notice>
               ) : (
                 <Notice tone="error">
-                  <p>{t("pdf.invalid")}</p>
+                  <p>{t(PDF_ERROR_KEYS[pdfError ?? "UNEXPECTED"], { max: fmt.bytes(MAX_PDF_BYTES) })}</p>
                 </Notice>
               )}
             </div>

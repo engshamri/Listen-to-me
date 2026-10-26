@@ -9,7 +9,7 @@ build/
 next-env.d.ts
 
 # generated at install/build time (scripts/copy-vendor-assets.mjs)
-public/pdf.worker.min.mjs
+public/pdfjs/
 public/ocr/
 
 # caches and temporary files (voice previews, legacy temp dir)
@@ -35,3 +35,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Generated test fixtures (tests/e2e/global-setup.ts)
+tests/fixtures/generated/

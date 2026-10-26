@@ -210,3 +210,16 @@ html.theme-transition *::after {
   background: color-mix(in srgb, #f59e0b, transparent 55%);
   border-radius: 2px;
 }
+
+/*
+ * Touch screens: text fields at 16px, so iOS Safari doesn't zoom the page in
+ * when one is focused (it zooms for anything smaller, which pushes dialogs
+ * and toolbars off screen). Unlayered, so it wins over size utilities.
+ */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

@@ -1,19 +1,34 @@
 "use client";
 
-import { FileText, Loader2, ScanText } from "lucide-react";
+import { FileText, Loader2, LockKeyhole, ScanText } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Notice, ProgressBar } from "./primitives";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { decodeTextFile, TextDecodeError, type TextEncoding } from "@/lib/files/decode-text";
-import { ACCEPTED_FILE_TYPES, MAX_OCR_PAGES, MAX_PDF_BYTES, MAX_PDF_PAGES_PER_IMPORT, MAX_TEXT_CHARS, MAX_TXT_BYTES } from "@/lib/files/limits";
+import { pickerAccept, sniffFile, type KindResult } from "@/lib/files/kind";
+import { MAX_OCR_PAGES, MAX_PDF_BYTES, MAX_PDF_PAGES_PER_IMPORT, MAX_TEXT_CHARS, MAX_TXT_BYTES } from "@/lib/files/limits";
 import { OCR_LANGUAGES, recognizePdfPages, type OcrLanguage, type OcrProgress } from "@/lib/files/ocr";
-import { destroyPdf, extractPdfText, joinPages, openPdf, parsePageRange, PdfError, type PdfExtraction } from "@/lib/files/pdf";
+import {
+  classifyPdfError,
+  destroyPdf,
+  extractPdfText,
+  formatPageList,
+  joinPages,
+  openPdf,
+  parsePageSelection,
+  westernDigits,
+  type PageSelection,
+  type PdfErrorCode,
+  type PdfExtraction,
+} from "@/lib/files/pdf";
+import { PDF_ERROR_KEYS, pageSelectionMessage } from "@/lib/files/pdf-messages";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TKey } from "@/lib/i18n/translate";
+import { cn } from "@/lib/utils";
 
 export interface ImportedFile {
   name: string;
@@ -47,30 +62,27 @@ interface Pending extends OpenPdf {
 type PdfState =
   | { step: "closed" }
   | { step: "opening"; file: File }
+  | { step: "password"; file: File; error?: string }
   | ({ step: "ready"; error?: string } & OpenPdf)
   | ({ step: "extracting"; done: number; total: number } & OpenPdf)
   | ({ step: "ocrOffer"; error?: string } & Pending)
   | ({ step: "ocr"; progress: OcrProgress } & Pending)
   | { step: "failed"; file: File; error: string };
 
-const PDF_ERRORS: Record<string, TKey> = {
-  NOT_PDF: "pdf.notPdf",
-  TOO_LARGE: "pdf.invalid",
-  ENCRYPTED: "pdf.encrypted",
-  INVALID: "pdf.invalid",
-  NO_TEXT: "pdf.noText",
-  TIMEOUT: "pdf.timeout",
-  OCR_FAILED: "ocr.failed",
-};
+/** How the pages to extract are chosen. "range" uses two number fields, so no hyphen has to be typed. */
+type PageMode = "all" | "single" | "range" | "multiple";
+const PAGE_MODES: PageMode[] = ["all", "single", "range", "multiple"];
+const MODE_LABELS: Record<PageMode, TKey> = { all: "pdf.allPages", single: "pdf.singlePage", range: "pdf.range", multiple: "pdf.multiple" };
 
 const OCR_LANGUAGE_LABELS: Record<OcrLanguage, TKey> = { "ara+eng": "ocr.langBoth", ara: "ocr.langArabic", eng: "ocr.langEnglish" };
 
-function kindOf(file: File): "txt" | "pdf" | null {
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".pdf") || file.type === "application/pdf") return "pdf";
-  if (name.endsWith(".txt") || file.type === "text/plain") return "txt";
-  return null;
-}
+/** Digits only, in any numeral system, written as Western digits (number fields). */
+const digitsOnly = (value: string) => westernDigits(value).replace(/\D/gu, "").slice(0, 6);
+/** Keeps page numbers in reading order inside Arabic (right-to-left) text. */
+const ltr = (s: string) => String.fromCharCode(0x2066) + s + String.fromCharCode(0x2069);
+
+/** Props for fields that take one page number: the numeric keypad is fine there. */
+const numberField = { inputMode: "numeric", pattern: "[0-9]*", autoComplete: "off", enterKeyHint: "go", dir: "ltr" } as const;
 
 /**
  * File import logic and the PDF page-selection dialog. Files are read
@@ -78,33 +90,91 @@ function kindOf(file: File): "txt" | "pdf" | null {
  */
 export function useFileImport({ getText, onImport }: { getText: () => string; onImport: (text: string, file: ImportedFile) => void }) {
   const { t, fmt, locale } = useI18n();
+  const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [pdf, setPdf] = useState<PdfState>({ step: "closed" });
-  const [mode, setMode] = useState<"all" | "range">("all");
-  const [range, setRange] = useState("");
+  const [mode, setMode] = useState<PageMode>("all");
+  const [single, setSingle] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [multiple, setMultiple] = useState("");
+  const [password, setPassword] = useState("");
   const [ocrLang, setOcrLang] = useState<OcrLanguage>("ara+eng");
   const abortRef = useRef<AbortController | null>(null);
 
+  const errorText = useCallback((code: PdfErrorCode) => t(PDF_ERROR_KEYS[code], { max: fmt.bytes(MAX_PDF_BYTES) }), [fmt, t]);
+
   const closePdf = useCallback(() => {
+    const busy = abortRef.current !== null;
     abortRef.current?.abort();
     abortRef.current = null;
+    setPassword("");
     setPdf((s) => {
       if ("doc" in s) destroyPdf(s.doc);
+      if (busy && (s.step === "opening" || s.step === "extracting" || s.step === "ocr")) toast.info(t("pdf.cancelled"));
       return { step: "closed" };
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  /** Opens a PDF (again, with a password when one is given) and moves to page selection. */
+  const openPdfFile = useCallback(
+    async (file: File, pdfPassword?: string) => {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setPdf({ step: "opening", file });
+      let buffer: ArrayBuffer;
+      try {
+        buffer = await file.arrayBuffer();
+      } catch {
+        if (!ctrl.signal.aborted) setPdf({ step: "failed", file, error: errorText("READ_FAILED") });
+        abortRef.current = null;
+        return;
+      }
+      try {
+        const doc = await openPdf(buffer, { signal: ctrl.signal, password: pdfPassword });
+        if (ctrl.signal.aborted) return destroyPdf(doc);
+        abortRef.current = null;
+        setPassword("");
+        const capped = doc.numPages > MAX_PDF_PAGES_PER_IMPORT;
+        setMode(capped ? "range" : "all");
+        setSingle("");
+        setFrom(capped ? "1" : "");
+        setTo(capped ? String(MAX_PDF_PAGES_PER_IMPORT) : "");
+        setMultiple("");
+        setPdf({ step: "ready", file, doc, numPages: doc.numPages });
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        abortRef.current = null;
+        const code = classifyPdfError(e);
+        // The underlying error, for diagnosis (never the document's text).
+        console.warn("[pdf] open failed:", code, (e as Error)?.message);
+        if (code === "PASSWORD_REQUIRED" || code === "PASSWORD_INCORRECT") {
+          setPdf({ step: "password", file, error: code === "PASSWORD_INCORRECT" ? errorText(code) : undefined });
+        } else {
+          setPdf({ step: "failed", file, error: errorText(code) });
+        }
+      }
+    },
+    [errorText],
+  );
 
   const handleFile = useCallback(
     async (file: File | undefined | null) => {
       if (!file) return;
-      const kind = kindOf(file);
-      if (!kind) return void toast.error(t("file.unsupported"));
-      const max = kind === "pdf" ? MAX_PDF_BYTES : MAX_TXT_BYTES;
+      // The kind comes from the file's first bytes: phones often report no type, or a generic one.
+      let kind: KindResult;
+      try {
+        kind = await sniffFile(file);
+      } catch {
+        return void toast.error(t("file.readFailed"));
+      }
+      if (!kind.kind) return void toast.error(t(kind.reason === "NOT_PDF" ? "pdf.notPdf" : "file.unsupported"));
+      const max = kind.kind === "pdf" ? MAX_PDF_BYTES : MAX_TXT_BYTES;
       if (file.size > max) return void toast.error(t("file.tooLarge", { name: file.name, size: fmt.bytes(file.size), max: fmt.bytes(max) }));
 
-      if (kind === "txt") {
+      if (kind.kind === "txt") {
         try {
           const buffer = await file.arrayBuffer();
           const decoded = decodeTextFile(buffer);
@@ -114,7 +184,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
           onImport(decoded.text, {
             name: file.name,
             size: file.size,
-            kind,
+            kind: "txt",
             encoding: decoded.encoding,
             confident: decoded.confident,
             buffer,
@@ -130,34 +200,31 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
         return;
       }
 
-      // PDF: open it, then let the user pick pages.
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      setMode("all");
-      setRange("");
-      setPdf({ step: "opening", file });
-      try {
-        const doc = await openPdf(await file.arrayBuffer(), ctrl.signal);
-        if (ctrl.signal.aborted) return destroyPdf(doc);
-        setPdf({ step: "ready", file, doc, numPages: doc.numPages });
-        if (doc.numPages > MAX_PDF_PAGES_PER_IMPORT) {
-          setMode("range");
-          setRange(`1-${MAX_PDF_PAGES_PER_IMPORT}`);
-        }
-      } catch (e) {
-        if (ctrl.signal.aborted) return;
-        const code = e instanceof PdfError ? e.code : "INVALID";
-        setPdf({ step: "failed", file, error: t(PDF_ERRORS[code] ?? "pdf.invalid") });
-      }
+      await openPdfFile(file);
     },
-    [fmt, getText, onImport, t],
+    [fmt, getText, onImport, openPdfFile, t],
   );
 
   const pageList = (pages: number[]) => pages.map((p) => fmt.number(p)).join(locale === "ar" ? "، " : ", ");
 
+  /** The pages the current choice selects, or why it can't be used. */
+  function selection(numPages: number): PageSelection {
+    switch (mode) {
+      case "all":
+        return { ok: true, pages: Array.from({ length: numPages }, (_, i) => i + 1) };
+      case "single":
+        return parsePageSelection(single, numPages);
+      case "range":
+        if (!from || !to) return { ok: false, error: { code: "EMPTY" } };
+        return parsePageSelection(`${from}-${to}`, numPages);
+      case "multiple":
+        return parsePageSelection(multiple, numPages);
+    }
+  }
+
   /**
-   * Puts the text into the editor and closes the dialog. Returns false (and
-   * keeps the dialog open with an explanation) when the text is too long.
+   * Puts the text into the editor and closes the dialog. Keeps the dialog
+   * open with an explanation when the text is too long.
    */
   function finishImport(p: Pending, text: string, notes: { ocrPages?: number; skipped?: number[]; lowConfidence?: number[]; unreadable?: number[] }) {
     const { file, doc, numPages } = p;
@@ -175,6 +242,8 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
       previousText: getText(),
     });
     toast.success(t("file.imported", { name: file.name }));
+    const failed = p.extraction.failedPages;
+    if (failed.length) toast.warning(t("pdf.failedPages", { count: failed.length, pages: pageList(failed) }), { duration: 15_000 });
     if (notes.ocrPages) toast.info(t("ocr.done", { count: notes.ocrPages }), { duration: 10_000 });
     if (notes.lowConfidence?.length) toast.warning(t("ocr.lowConfidence", { pages: pageList(notes.lowConfidence) }), { duration: 15_000 });
     if (notes.unreadable?.length) toast.warning(t("ocr.unreadable", { pages: pageList(notes.unreadable) }), { duration: 15_000 });
@@ -187,26 +256,32 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
   async function extract() {
     if (pdf.step !== "ready") return;
     const { file, doc, numPages } = pdf;
-    const pages = mode === "all" ? Array.from({ length: numPages }, (_, i) => i + 1) : parsePageRange(range, numPages);
-    if (!pages) return setPdf({ ...pdf, error: t("pdf.rangeInvalid", { max: numPages }) });
-    if (pages.length > MAX_PDF_PAGES_PER_IMPORT) return setPdf({ ...pdf, error: t("pdf.tooManyPages", { max: MAX_PDF_PAGES_PER_IMPORT }) });
+    const sel = selection(numPages);
+    if (!sel.ok) {
+      const [key, params] = pageSelectionMessage(sel.error);
+      return setPdf({ ...pdf, error: t(key, params) });
+    }
+    if (sel.pages.length > MAX_PDF_PAGES_PER_IMPORT) return setPdf({ ...pdf, error: t("pdf.tooManyPages", { max: MAX_PDF_PAGES_PER_IMPORT }) });
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    setPdf({ step: "extracting", file, doc, numPages, done: 0, total: pages.length });
+    setPdf({ step: "extracting", file, doc, numPages, done: 0, total: sel.pages.length });
     try {
-      const extraction = await extractPdfText(doc, pages, {
+      const extraction = await extractPdfText(doc, sel.pages, {
         signal: ctrl.signal,
         onProgress: (done, total) => setPdf((s) => (s.step === "extracting" ? { ...s, done, total } : s)),
       });
-      const pending: Pending = { file, doc, numPages, extraction, rangeLabel: mode === "all" ? `1-${numPages}` : range.trim() };
+      abortRef.current = null;
+      const pending: Pending = { file, doc, numPages, extraction, rangeLabel: formatPageList(sel.pages) };
       // Image-only pages are never dropped silently: the user decides between OCR and skipping them.
       if (extraction.emptyPages.length) setPdf({ step: "ocrOffer", ...pending });
       else finishImport(pending, joinPages(extraction.pages), {});
     } catch (e) {
       if (ctrl.signal.aborted) return;
-      const code = e instanceof PdfError ? e.code : "INVALID";
-      setPdf({ step: "ready", file, doc, numPages, error: t(PDF_ERRORS[code] ?? "pdf.invalid") });
+      abortRef.current = null;
+      const code = classifyPdfError(e);
+      console.warn("[pdf] extraction failed:", code, (e as Error)?.message);
+      setPdf({ step: "ready", file, doc, numPages, error: errorText(code) });
     }
   }
 
@@ -224,6 +299,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
         signal: ctrl.signal,
         onProgress: (progress) => setPdf((s) => (s.step === "ocr" ? { ...s, progress } : s)),
       });
+      abortRef.current = null;
       const merged = new Map(pending.extraction.pages);
       for (const [page, text] of result.pages) merged.set(page, text);
       const text = joinPages(merged);
@@ -236,8 +312,9 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
     } catch (e) {
       // Stopping returns to the choice; the document stays open.
       if (ctrl.signal.aborted) return setPdf((s) => (s.step === "ocr" ? { step: "ocrOffer", ...pending } : s));
-      const code = e instanceof PdfError ? e.code : "OCR_FAILED";
-      setPdf({ step: "ocrOffer", ...pending, error: t(PDF_ERRORS[code] ?? "ocr.failed") });
+      abortRef.current = null;
+      const code = classifyPdfError(e);
+      setPdf({ step: "ocrOffer", ...pending, error: errorText(code === "UNEXPECTED" ? "OCR_FAILED" : code) });
     }
   }
 
@@ -250,7 +327,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
   function choosePages() {
     if (pdf.step !== "ocrOffer") return;
     const { file, doc, numPages } = pdf;
-    setMode("range");
+    setMode("multiple");
     setPdf({ step: "ready", file, doc, numPages });
   }
 
@@ -258,19 +335,31 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
     <input
       ref={inputRef}
       type="file"
-      accept={ACCEPTED_FILE_TYPES}
+      accept=".pdf,.txt,application/pdf,text/plain"
       className="sr-only"
       tabIndex={-1}
       aria-hidden
       onChange={(e) => {
-        void handleFile(e.target.files?.[0]);
+        const file = e.target.files?.[0];
+        // Cleared at once, so choosing the same file again fires another change.
         e.target.value = "";
+        void handleFile(file);
       }}
     />
   );
 
   const open = pdf.step !== "closed";
   const busy = pdf.step === "opening" || pdf.step === "extracting" || pdf.step === "ocr";
+  const sel = pdf.step === "ready" ? selection(pdf.numPages) : null;
+  /** A selection problem worth showing while typing (not "nothing entered yet"). */
+  const liveError = sel && !sel.ok && sel.error.code !== "EMPTY" ? t(...pageSelectionMessage(sel.error)) : null;
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void extract();
+    }
+  };
+
   const dialog = (
     <Dialog open={open} onOpenChange={(o) => !o && closePdf()}>
       <DialogContent closeLabel={t("common.close")} onInteractOutside={(e) => busy && e.preventDefault()}>
@@ -280,10 +369,12 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
         </DialogHeader>
 
         {pdf.step !== "closed" && (
-          <div className="bg-muted flex items-center gap-3 rounded-lg p-3">
+          <div className="bg-muted flex min-w-0 items-center gap-3 rounded-lg p-3">
             <FileText className="text-muted-foreground size-5 shrink-0" aria-hidden />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium" dir="auto">{pdf.file.name}</p>
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]" dir="auto" data-testid="pdf-file-name">
+                {pdf.file.name}
+              </p>
               <p className="text-muted-foreground text-[13px]">
                 {fmt.bytes(pdf.file.size)}
                 {"numPages" in pdf && <> · {t("pdf.pages", { count: pdf.numPages })}</>}
@@ -304,42 +395,121 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
           </Notice>
         )}
 
-        {pdf.step === "ready" && (
-          <fieldset className="space-y-3">
-            <legend className="sr-only">{t("pdf.range")}</legend>
-            <label className="flex items-center gap-3 text-sm">
-              <input
-                type="radio"
-                name="pdf-pages"
-                className="accent-primary size-4"
-                checked={mode === "all"}
-                disabled={pdf.numPages > MAX_PDF_PAGES_PER_IMPORT}
-                onChange={() => setMode("all")}
+        {pdf.step === "password" && (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (password) void openPdfFile(pdf.file, password);
+            }}
+          >
+            <Notice tone={pdf.error ? "error" : "info"} role={pdf.error ? "alert" : undefined} className="flex gap-2">
+              <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{pdf.error ?? t("pdf.passwordRequired")}</span>
+            </Notice>
+            <div>
+              <label htmlFor={`${id}-password`} className="text-sm font-medium">
+                {t("pdf.password")}
+              </label>
+              <Input
+                id={`${id}-password`}
+                type="password"
+                autoComplete="off"
+                autoFocus
+                enterKeyHint="go"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={Boolean(pdf.error) || undefined}
+                className="mt-1"
               />
-              {t("pdf.allPages")} ({t("pdf.pages", { count: pdf.numPages })})
-            </label>
-            <label className="flex items-center gap-3 text-sm">
-              <input type="radio" name="pdf-pages" className="accent-primary size-4" checked={mode === "range"} onChange={() => setMode("range")} />
-              {t("pdf.range")}
-            </label>
-            {mode === "range" && (
-              <div className="ps-7">
-                <Input
-                  value={range}
-                  onChange={(e) => setRange(e.target.value)}
-                  placeholder={t("pdf.rangeHint")}
-                  aria-label={t("pdf.range")}
-                  aria-describedby="pdf-range-hint"
-                  dir="ltr"
-                  inputMode="numeric"
-                  autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && void extract()}
-                />
-                <p id="pdf-range-hint" className="text-muted-foreground mt-1.5 text-[13px]">
-                  {t("pdf.rangeHint")}
-                </p>
+            </div>
+            <Button type="submit" disabled={!password}>
+              {t("pdf.unlock")}
+            </Button>
+          </form>
+        )}
+
+        {pdf.step === "ready" && (
+          <fieldset className="min-w-0 space-y-1">
+            <legend className="mb-1 text-sm font-medium">{t("pdf.choosePages")}</legend>
+            {PAGE_MODES.map((m) => (
+              <div key={m}>
+                <label className="flex min-h-11 items-center gap-3 text-sm">
+                  <input
+                    type="radio"
+                    name={`${id}-pages`}
+                    className="accent-primary size-4 shrink-0"
+                    checked={mode === m}
+                    disabled={m === "all" && pdf.numPages > MAX_PDF_PAGES_PER_IMPORT}
+                    onChange={() => {
+                      setMode(m);
+                      if (pdf.error) setPdf({ ...pdf, error: undefined });
+                    }}
+                  />
+                  <span>
+                    {t(MODE_LABELS[m])}
+                    {m === "all" && <span className="text-muted-foreground"> ({t("pdf.pages", { count: pdf.numPages })})</span>}
+                  </span>
+                </label>
+                {mode === m && m === "single" && (
+                  <div className="ps-7 pb-2">
+                    <label htmlFor={`${id}-single`} className="text-muted-foreground text-[13px]">
+                      {t("pdf.page")}
+                    </label>
+                    <Input id={`${id}-single`} {...numberField} autoFocus value={single} onChange={(e) => setSingle(digitsOnly(e.target.value))} onKeyDown={onEnter} aria-invalid={Boolean(liveError) || undefined} className="mt-1 w-28 text-center" />
+                  </div>
+                )}
+                {mode === m && m === "range" && (
+                  <div className="flex flex-wrap items-end gap-3 ps-7 pb-2">
+                    <div>
+                      <label htmlFor={`${id}-from`} className="text-muted-foreground text-[13px]">
+                        {t("pdf.fromPage")}
+                      </label>
+                      <Input id={`${id}-from`} {...numberField} autoFocus={!from} value={from} onChange={(e) => setFrom(digitsOnly(e.target.value))} onKeyDown={onEnter} aria-invalid={Boolean(liveError) || undefined} className="mt-1 w-28 text-center" />
+                    </div>
+                    <div>
+                      <label htmlFor={`${id}-to`} className="text-muted-foreground text-[13px]">
+                        {t("pdf.toPage")}
+                      </label>
+                      <Input id={`${id}-to`} {...numberField} value={to} onChange={(e) => setTo(digitsOnly(e.target.value))} onKeyDown={onEnter} aria-invalid={Boolean(liveError) || undefined} className="mt-1 w-28 text-center" />
+                    </div>
+                  </div>
+                )}
+                {mode === m && m === "multiple" && (
+                  <div className="ps-7 pb-2">
+                    <label htmlFor={`${id}-multiple`} className="text-muted-foreground text-[13px]">
+                      {t("pdf.pagesField")}
+                    </label>
+                    {/* A text keyboard: the numeric keypad on iPhone has no hyphen or comma. */}
+                    <Input
+                      id={`${id}-multiple`}
+                      type="text"
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      enterKeyHint="go"
+                      dir="ltr"
+                      autoFocus
+                      value={multiple}
+                      placeholder="1-5, 8, 12-20"
+                      onChange={(e) => setMultiple(e.target.value.slice(0, 200))}
+                      onKeyDown={onEnter}
+                      aria-describedby={`${id}-hint`}
+                      aria-invalid={Boolean(liveError) || undefined}
+                      className="mt-1"
+                    />
+                    <p id={`${id}-hint`} className="text-muted-foreground mt-1.5 text-[13px]">
+                      {t("pdf.rangeHint")}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
+            <p role="status" className={cn("min-h-5 pt-1 text-[13px]", liveError ? "text-destructive" : "text-muted-foreground")}>
+              {liveError ?? (sel?.ok ? t("pdf.selected", { count: sel.pages.length, list: locale === "ar" ? ltr(formatPageList(sel.pages, "، ")) : formatPageList(sel.pages) }) : "")}
+            </p>
             {pdf.error && (
               <Notice tone="error" role="alert">
                 {pdf.error}
@@ -373,7 +543,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
                   <select
                     value={ocrLang}
                     onChange={(e) => setOcrLang(e.target.value as OcrLanguage)}
-                    className="border-input bg-card text-foreground h-9 rounded-lg border px-2.5 text-sm outline-none focus-visible:border-ring"
+                    className="border-input bg-card text-foreground h-10 rounded-lg border px-2.5 text-base outline-none focus-visible:border-ring md:pointer-fine:h-9 md:pointer-fine:text-sm"
                   >
                     {OCR_LANGUAGES.map((l) => (
                       <option key={l} value={l}>
@@ -416,6 +586,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
               {t("pdf.cancel")}
             </Button>
           )}
+          {pdf.step === "failed" && <Button onClick={() => void openPdfFile(pdf.file)}>{t("common.retry")}</Button>}
           {(pdf.step === "ready" || pdf.step === "extracting") && (
             <Button onClick={() => void extract()} disabled={pdf.step === "extracting"}>
               {pdf.step === "extracting" && <Loader2 className="animate-spin" aria-hidden />}
@@ -448,7 +619,13 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
   );
 
   return {
-    openPicker: () => inputRef.current?.click(),
+    openPicker: () => {
+      const input = inputRef.current;
+      if (!input) return;
+      // Touch devices also accept generic file types (see pickerAccept); desktop keeps the strict filter.
+      input.accept = pickerAccept();
+      input.click();
+    },
     handleFile,
     elements: (
       <>

@@ -2,19 +2,13 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { sniffFile } from "@/lib/files/kind";
 import { MAX_PDF_BYTES } from "@/lib/files/limits";
-import { PdfError, destroyPdf, openPdf } from "@/lib/files/pdf";
+import { PdfError, classifyPdfError, destroyPdf, openPdf } from "@/lib/files/pdf";
+import { PDF_ERROR_KEYS } from "@/lib/files/pdf-messages";
 import { useI18n } from "@/lib/i18n/provider";
-import type { TKey } from "@/lib/i18n/translate";
 import { MAX_STUDY_PAGES, readPages, titleFromFileName, usableTitle } from "@/lib/study/import";
 import { createDoc, type StudyDoc } from "@/lib/study/store";
-
-const PDF_ERROR_KEY: Partial<Record<PdfError["code"], TKey>> = {
-  NOT_PDF: "pdf.notPdf",
-  ENCRYPTED: "pdf.encrypted",
-  INVALID: "pdf.invalid",
-  TIMEOUT: "pdf.timeout",
-};
 
 /** Reads a lecture PDF in the browser and saves it locally; reports page progress and can be cancelled. */
 export function useLectureImport(onSaved: (doc: StudyDoc) => void) {
@@ -24,13 +18,16 @@ export function useLectureImport(onSaved: (doc: StudyDoc) => void) {
 
   async function importFile(file: File, courseId: string | null = null) {
     if (ctrl.current) return;
-    if (!/\.pdf$/iu.test(file.name) && file.type !== "application/pdf") return void toast.error(t("pdf.notPdf"));
+    // Decided from the file's bytes: phones often report no type, or a generic one.
+    const kind = await sniffFile(file).catch(() => null);
+    if (!kind) return void toast.error(t("file.readFailed"));
+    if (kind.kind !== "pdf") return void toast.error(t(kind.kind === null && kind.reason === "UNSUPPORTED" ? "file.unsupported" : "pdf.notPdf"));
     if (file.size > MAX_PDF_BYTES) return void toast.error(t("file.tooLarge", { name: file.name, size: fmt.bytes(file.size), max: fmt.bytes(MAX_PDF_BYTES) }));
     const controller = new AbortController();
     ctrl.current = controller;
     setProgress({ done: 0, total: 0 });
     try {
-      const doc = await openPdf(await file.arrayBuffer(), controller.signal);
+      const doc = await openPdf(await file.arrayBuffer().catch(() => Promise.reject(new PdfError("READ_FAILED"))), { signal: controller.signal });
       try {
         if (doc.numPages > MAX_STUDY_PAGES) {
           toast.error(t("study.tooManyPages", { count: doc.numPages, max: MAX_STUDY_PAGES }));
@@ -56,8 +53,14 @@ export function useLectureImport(onSaved: (doc: StudyDoc) => void) {
       }
     } catch (e) {
       if (controller.signal.aborted || (e instanceof PdfError && e.code === "ABORTED")) return;
-      const key = e instanceof PdfError ? PDF_ERROR_KEY[e.code] : undefined;
-      toast.error(key ? t(key) : (e as { name?: string })?.name === "QuotaExceededError" || (e as { code?: string })?.code === "QUOTA" ? t("library.errors.QUOTA") : t("study.saveFailed"));
+      if (!(e instanceof PdfError)) {
+        // Saving failed (storage), not reading.
+        toast.error((e as { name?: string })?.name === "QuotaExceededError" || (e as { code?: string })?.code === "QUOTA" ? t("library.errors.QUOTA") : t("study.saveFailed"));
+        return;
+      }
+      const code = classifyPdfError(e);
+      console.warn("[pdf] lecture import failed:", code, e.message);
+      toast.error(code === "PASSWORD_REQUIRED" || code === "PASSWORD_INCORRECT" ? t("study.passwordPdf") : t(PDF_ERROR_KEYS[code], { max: fmt.bytes(MAX_PDF_BYTES) }), { duration: 12_000 });
     } finally {
       ctrl.current = null;
       setProgress(null);

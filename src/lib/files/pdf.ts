@@ -3,9 +3,33 @@
  * user's device. Runs pdf.js in its web worker, so the UI stays responsive.
  */
 import type { PDFDocumentProxy, TextItem } from "pdfjs-dist/types/src/display/api";
+import { arabicLetters } from "@/lib/text/arabic-letters";
 import { MAX_PDF_BYTES, PDF_PAGE_TIMEOUT_MS } from "./limits";
 
-export type PdfErrorCode = "NOT_PDF" | "TOO_LARGE" | "ENCRYPTED" | "INVALID" | "NO_TEXT" | "TIMEOUT" | "ABORTED" | "OCR_FAILED";
+export type PdfErrorCode =
+  | "NOT_PDF"
+  | "TOO_LARGE"
+  /** The PDF has a password and none (or the wrong one) was given. */
+  | "PASSWORD_REQUIRED"
+  | "PASSWORD_INCORRECT"
+  /** The file's structure is broken: not readable as a PDF. */
+  | "INVALID"
+  /** pdf.js read the file but failed on something in it. */
+  | "UNSUPPORTED_FEATURE"
+  /** A JavaScript built-in the reader needs is missing: the browser is too old. */
+  | "UNSUPPORTED_BROWSER"
+  /** The pdf.js library or its worker could not be loaded. */
+  | "READER_FAILED"
+  | "MEMORY"
+  /** The browser could not read the chosen file (e.g. a cloud file not downloaded). */
+  | "READ_FAILED"
+  | "NO_TEXT"
+  | "TIMEOUT"
+  | "ABORTED"
+  | "OCR_FAILED"
+  /** No selected page could be read. */
+  | "EXTRACT_FAILED"
+  | "UNEXPECTED";
 
 export class PdfError extends Error {
   constructor(public code: PdfErrorCode, message?: string) {
@@ -13,14 +37,48 @@ export class PdfError extends Error {
   }
 }
 
-type PdfJs = typeof import("pdfjs-dist");
+/** Sorts any failure while opening or reading a PDF into a code the interface can explain. */
+export function classifyPdfError(e: unknown): PdfErrorCode {
+  if (e instanceof PdfError) return e.code;
+  const name = String((e as { name?: unknown } | null)?.name ?? "");
+  const message = String((e as { message?: unknown } | null)?.message ?? "");
+  if (name === "PasswordException") return (e as { code?: number }).code === 2 ? "PASSWORD_INCORRECT" : "PASSWORD_REQUIRED";
+  if (name === "InvalidPDFException") return "INVALID";
+  if (/fake worker|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError|Loading chunk/iu.test(`${name} ${message}`)) return "READER_FAILED";
+  if (name === "RangeError" || /out of memory|allocation failed|Array buffer allocation|Maximum call stack/iu.test(message)) return "MEMORY";
+  // A built-in this browser lacks, e.g. "hashOriginal.toHex is not a function" (Safari before 18.2).
+  if (["TypeError", "ReferenceError", "SyntaxError"].includes(name) || /is not a function|is not defined|Can't find variable|is not a constructor|undefined is not an object/iu.test(message)) {
+    return "UNSUPPORTED_BROWSER";
+  }
+  if (["UnknownErrorException", "FormatError", "UnexpectedResponseException", "ResponseException"].includes(name)) return "UNSUPPORTED_FEATURE";
+  return "UNEXPECTED";
+}
+
+type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 let pdfjsPromise: Promise<PdfJs> | null = null;
 
-function loadPdfJs(): Promise<PdfJs> {
-  pdfjsPromise ??= import("pdfjs-dist").then((mod) => {
-    mod.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-    return mod;
-  });
+/** Where the copied pdf.js files are served (see scripts/copy-vendor-assets.mjs). */
+const PDFJS_BASE = "/pdfjs";
+
+/**
+ * Loads pdf.js once. The legacy build is used on purpose: the modern build
+ * calls the newest JavaScript built-ins without fallbacks (Uint8Array#toHex,
+ * Map#getOrInsertComputed, Math.sumPrecise…), so Safari before 26.2 (every
+ * iPhone not on the latest iOS) and other older browsers failed on every
+ * PDF. The legacy build ships polyfills for them.
+ */
+export function loadPdfJs(): Promise<PdfJs> {
+  pdfjsPromise ??= import("pdfjs-dist/legacy/build/pdf.mjs").then(
+    (mod) => {
+      // The worker file carries the version, so it always matches this library.
+      mod.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE}/pdf.worker-${mod.version}.min.mjs`;
+      return mod;
+    },
+    (e: unknown) => {
+      pdfjsPromise = null;
+      throw new PdfError("READER_FAILED", (e as Error)?.message);
+    },
+  );
   return pdfjsPromise;
 }
 
@@ -33,24 +91,45 @@ export function hasPdfSignature(bytes: Uint8Array): boolean {
   return false;
 }
 
-export async function openPdf(buffer: ArrayBuffer, signal?: AbortSignal): Promise<PDFDocumentProxy> {
+/**
+ * Opens a PDF in the pdf.js worker. pdf.js takes over (detaches) the buffer,
+ * so pass a copy if it is needed afterwards. Failures are PdfErrors with a
+ * specific code; the original message is kept for diagnosis, never shown.
+ */
+export async function openPdf(buffer: ArrayBuffer, { signal, password }: { signal?: AbortSignal; password?: string } = {}): Promise<PDFDocumentProxy> {
   if (buffer.byteLength > MAX_PDF_BYTES) throw new PdfError("TOO_LARGE");
   if (!hasPdfSignature(new Uint8Array(buffer))) throw new PdfError("NOT_PDF");
   const pdfjs = await loadPdfJs();
-  const task = pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    disableFontFace: true,
-    stopAtErrors: false,
-  });
+  if (signal?.aborted) throw new PdfError("ABORTED");
+  let task: ReturnType<PdfJs["getDocument"]>;
+  try {
+    task = pdfjs.getDocument({
+      data: new Uint8Array(buffer),
+      password,
+      disableFontFace: true,
+      stopAtErrors: false,
+      // Text of PDFs whose fonts use predefined character maps (CJK), standard
+      // fonts and image decoders (JBIG2/JPEG 2000 scans, rendered for OCR).
+      cMapUrl: `${PDFJS_BASE}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${PDFJS_BASE}/standard_fonts/`,
+      wasmUrl: `${PDFJS_BASE}/wasm/`,
+    });
+  } catch (e) {
+    throw new PdfError(classifyPdfError(e), (e as Error)?.message);
+  }
   const onAbort = () => void task.destroy();
   signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    return await task.promise;
+    const doc = await task.promise;
+    if (doc.numPages < 1) {
+      void task.destroy();
+      throw new PdfError("INVALID", "no pages");
+    }
+    return doc;
   } catch (e) {
     if (signal?.aborted) throw new PdfError("ABORTED");
-    const name = (e as { name?: string })?.name;
-    if (name === "PasswordException") throw new PdfError("ENCRYPTED");
-    throw new PdfError("INVALID", (e as Error)?.message);
+    throw new PdfError(classifyPdfError(e), (e as Error)?.message);
   } finally {
     signal?.removeEventListener("abort", onAbort);
   }
@@ -87,6 +166,26 @@ function lineIsRtl(items: TextItem[]): boolean {
 }
 
 /**
+ * The items of one line in reading order, with diacritics drawn as their own
+ * items (Arabic shadda, damma…) attached to the letter whose centre is
+ * nearest: sorting them by position alone can put them on the neighbouring
+ * letter. `text(item)` gives an item's text with its marks.
+ */
+export function orderLineItems(items: TextItem[], rtl: boolean): { sorted: TextItem[]; text: (item: TextItem) => string } {
+  const isMark = (i: TextItem) => /^\p{M}+$/u.test(i.str);
+  const sorted = items.filter((i) => !isMark(i)).sort((a, b) => (rtl ? b.transform[4] - a.transform[4] : a.transform[4] - b.transform[4]));
+  const centre = (i: TextItem) => i.transform[4] + i.width / 2;
+  const marksOf = new Map<TextItem, string>();
+  for (const m of items.filter(isMark)) {
+    const x = centre(m);
+    const base = sorted.filter((i) => i.str.trim()).reduce<TextItem | null>((best, i) => (!best || Math.abs(centre(i) - x) < Math.abs(centre(best) - x) ? i : best), null);
+    if (base) marksOf.set(base, (marksOf.get(base) ?? "") + m.str);
+  }
+  // In right-to-left lines, an item may start with the mark of its first letter (visual order).
+  return { sorted, text: (it) => (rtl ? it.str.replace(/^(\p{M}+)(\p{L})/u, "$2$1") : it.str) + (marksOf.get(it) ?? "") };
+}
+
+/**
  * Turns pdf.js text items into reading-order text. Items arrive in content
  * stream order (which keeps columns together); we split that stream into
  * lines and order each line by x-coordinate, right-to-left for Arabic and
@@ -117,18 +216,18 @@ export function itemsToText(rawItems: unknown[]): string {
   for (const line of lines) {
     if (!line.items.length) continue;
     const rtl = lineIsRtl(line.items);
-    const sorted = [...line.items].sort((a, b) => (rtl ? b.transform[4] - a.transform[4] : a.transform[4] - b.transform[4]));
+    const ordered = orderLineItems(line.items, rtl);
     let text = "";
     let last: TextItem | null = null;
-    for (const it of sorted) {
+    for (const it of ordered.sorted) {
       if (last) {
         const gap = rtl ? last.transform[4] - (it.transform[4] + it.width) : it.transform[4] - (last.transform[4] + last.width);
-        if (gap > line.height * 0.15 && !/\s$/u.test(text) && !/^\s/u.test(it.str)) text += " ";
+        if (gap > line.height * 0.15 && !/\s$/u.test(text) && !/^[\s\p{M}]/u.test(it.str)) text += " ";
       }
-      text += it.str;
+      text += ordered.text(it);
       last = it;
     }
-    text = text.normalize("NFKC").replace(/­/g, "").replace(/[ \t]+/g, " ").trim();
+    text = arabicLetters(text.normalize("NFKC").replace(/­/g, "").replace(/[ \t]+/g, " ").trim());
     if (!text) continue;
     if (prev) {
       const gap = prev.y - line.y;
@@ -147,6 +246,8 @@ export interface PdfExtraction {
   pages: PageTexts;
   /** 1-based numbers of selected pages that contained no extractable text (scanned images). */
   emptyPages: number[];
+  /** Pages pdf.js failed on (or that timed out); left out, never replaced with invented text. */
+  failedPages: number[];
 }
 
 export function withTimeout<T>(p: Promise<T>, ms: number, onTimeout?: () => void): Promise<T> {
@@ -165,7 +266,13 @@ export function withTimeout<T>(p: Promise<T>, ms: number, onTimeout?: () => void
 /** A page counts as empty when it has fewer than two visible characters. */
 export const isBlankText = (text: string) => text.replace(/\s/g, "").length < 2;
 
-/** Reads the text layer of the selected pages. Image-only pages are reported, not dropped. */
+/**
+ * Reads the text layer of the selected pages, one page at a time (pages are
+ * released as soon as they are read, so long books stay within memory).
+ * Image-only pages are reported, not dropped. A page pdf.js fails on is
+ * listed in failedPages and the others are kept; only when every page fails
+ * does the whole extraction fail.
+ */
 export async function extractPdfText(
   doc: PDFDocumentProxy,
   pages: number[],
@@ -173,24 +280,39 @@ export async function extractPdfText(
 ): Promise<PdfExtraction> {
   const texts: PageTexts = new Map();
   const emptyPages: number[] = [];
+  const failedPages: number[] = [];
+  let lastError: unknown = null;
   for (let i = 0; i < pages.length; i++) {
     if (signal?.aborted) throw new PdfError("ABORTED");
     const pageNo = pages[i];
-    const page = await withTimeout(doc.getPage(pageNo), PDF_PAGE_TIMEOUT_MS);
-    const content = await withTimeout(page.getTextContent(), PDF_PAGE_TIMEOUT_MS);
-    page.cleanup();
-    const text = itemsToText(content.items);
-    if (isBlankText(text)) {
-      emptyPages.push(pageNo);
-      texts.set(pageNo, "");
-    } else {
-      texts.set(pageNo, text);
+    try {
+      const page = await withTimeout(doc.getPage(pageNo), PDF_PAGE_TIMEOUT_MS);
+      try {
+        const content = await withTimeout(page.getTextContent(), PDF_PAGE_TIMEOUT_MS);
+        const text = itemsToText(content.items);
+        if (isBlankText(text)) {
+          emptyPages.push(pageNo);
+          texts.set(pageNo, "");
+        } else {
+          texts.set(pageNo, text);
+        }
+      } finally {
+        page.cleanup();
+      }
+    } catch (e) {
+      if (signal?.aborted) throw new PdfError("ABORTED");
+      // Out of memory or a missing browser feature will fail every page: stop now.
+      const code = classifyPdfError(e);
+      if (code === "MEMORY" || code === "UNSUPPORTED_BROWSER" || code === "READER_FAILED") throw new PdfError(code, (e as Error)?.message);
+      failedPages.push(pageNo);
+      lastError = e;
     }
     onProgress?.(i + 1, pages.length);
     // Let React paint progress between pages.
     await new Promise((r) => setTimeout(r, 0));
   }
-  return { pages: texts, emptyPages };
+  if (pages.length && failedPages.length === pages.length) throw new PdfError("EXTRACT_FAILED", (lastError as Error)?.message);
+  return { pages: texts, emptyPages, failedPages };
 }
 
 /** Joins page texts in page order, skipping pages that are still empty. */
@@ -202,18 +324,76 @@ export function joinPages(pages: PageTexts): string {
     .join("\n\n");
 }
 
-/** Parses "1-3, 7, 10-12" into sorted unique page numbers within 1..max. */
-export function parsePageRange(input: string, max: number): number[] | null {
+// ---------------------------------------------------------------------------
+// Page selection
+// ---------------------------------------------------------------------------
+
+export type PageSelectionError =
+  | { code: "EMPTY" }
+  /** Something that isn't a page number or range, e.g. "5-" or "a". */
+  | { code: "SYNTAX"; part: string }
+  /** Page 0 (or a negative number). */
+  | { code: "ZERO"; part: string }
+  /** "10-5": the range runs backwards. */
+  | { code: "REVERSED"; part: string }
+  /** A page after the last one. */
+  | { code: "OUT_OF_RANGE"; part: string; max: number };
+
+export type PageSelection = { ok: true; pages: number[] } | { ok: false; error: PageSelectionError };
+
+/** Arabic-Indic and Eastern Arabic-Indic (Persian/Urdu) digits as Western digits. */
+export function westernDigits(s: string): string {
+  return s.replace(/[٠-٩]/gu, (d) => String(d.charCodeAt(0) - 0x660)).replace(/[۰-۹]/gu, (d) => String(d.charCodeAt(0) - 0x6f0));
+}
+
+/**
+ * Parses a page selection such as "5", "5-10" or "1-5,8,12-20" (also with
+ * Arabic-Indic digits, the Arabic comma and any dash). The pages come back
+ * sorted and without duplicates. Nothing is guessed: any part that isn't a
+ * valid page or range within 1..max makes the whole selection invalid.
+ */
+export function parsePageSelection(input: string, max: number): PageSelection {
+  const text = westernDigits(input)
+    .replace(/[‐-―−﹘﹣－]/gu, "-")
+    .replace(/[،؛;]/gu, ",")
+    .trim();
+  if (!text) return { ok: false, error: { code: "EMPTY" } };
   const pages = new Set<number>();
-  const parts = input.replace(/[–—]/g, "-").split(/[,،\s]+/).filter(Boolean);
-  if (!parts.length) return null;
-  for (const part of parts) {
-    const m = /^(\d+)(?:-(\d+))?$/.exec(part);
-    if (!m) return null;
+  const parts = text.split(",");
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) {
+      // A trailing comma ("1-5,") is harmless; an empty part elsewhere ("1,,2") is a typo.
+      if (i === parts.length - 1 && i > 0) continue;
+      return { ok: false, error: { code: "SYNTAX", part: "," } };
+    }
+    const m = /^(-?\d+)\s*(?:-\s*(-?\d+))?$/u.exec(part);
+    if (!m) return { ok: false, error: { code: "SYNTAX", part } };
     const a = Number(m[1]);
-    const b = m[2] ? Number(m[2]) : a;
-    if (a < 1 || b < a || b > max) return null;
+    const b = m[2] === undefined ? a : Number(m[2]);
+    if (a < 1 || b < 1) return { ok: false, error: { code: "ZERO", part } };
+    if (b < a) return { ok: false, error: { code: "REVERSED", part } };
+    if (b > max) return { ok: false, error: { code: "OUT_OF_RANGE", part, max } };
     for (let p = a; p <= b; p++) pages.add(p);
   }
-  return [...pages].sort((x, y) => x - y);
+  if (!pages.size) return { ok: false, error: { code: "EMPTY" } };
+  return { ok: true, pages: [...pages].sort((x, y) => x - y) };
+}
+
+/** Parses a page selection; null when it isn't valid (see parsePageSelection for the reason). */
+export function parsePageRange(input: string, max: number): number[] | null {
+  const r = parsePageSelection(input, max);
+  return r.ok ? r.pages : null;
+}
+
+/** Sorted pages written compactly: [1,2,3,5,8,9] → "1-3, 5, 8-9". */
+export function formatPageList(pages: number[], separator = ", "): string {
+  const out: string[] = [];
+  for (let i = 0; i < pages.length; i++) {
+    let j = i;
+    while (j + 1 < pages.length && pages[j + 1] === pages[j] + 1) j++;
+    out.push(j > i ? `${pages[i]}-${pages[j]}` : String(pages[i]));
+    i = j;
+  }
+  return out.join(separator);
 }

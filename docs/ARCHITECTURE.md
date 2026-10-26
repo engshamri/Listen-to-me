@@ -11,8 +11,10 @@ scripts/
   build-voice-catalog.mjs    Enrich voices (localized names, regions, flags) → voice-catalog.json
   generate-brand-assets.mjs  Favicon, social image, MP4 video cover
   generate-donation-qr.mjs   QR codes for /support (public/donate/*.svg and *.png) from donations.json
-  copy-vendor-assets.mjs     Copies the pdf.js worker and the OCR engine (tesseract.js worker,
+  copy-vendor-assets.mjs     Copies pdf.js (legacy-build worker named by version, character maps,
+                             standard fonts, image decoders) and the OCR engine (tesseract.js worker,
                              WebAssembly cores, Arabic/English data) into public/ (git-ignored)
+  make-protected-pdfs.py     Test fixtures: the lecture PDF with a password, and owner-restricted (needs pypdf)
   live-check.mjs             End-to-end API checks against a running server (SMOKE=1: the daily subset)
   voice-qa/run_audit.py      Voice quality audit (audio checks + speech recognition) → voice-quality.json
   voice-qa/reliability.py    Repeated synthesis attempts for voices that fail intermittently
@@ -63,7 +65,7 @@ tests/
 |---|---|
 | `studio.tsx` | Owns text, settings, generation state and results; lays out sections in task order (text → voice → settings → generate → result) so visual, keyboard and screen-reader order match |
 | `text-panel.tsx` | Editor, toolbar, stats, translation banner, import chip, script/voice mismatch notice |
-| `file-import.tsx` | File picker, drag and drop, TXT decoding, PDF dialog: page range → text layer → OCR offer for image-only pages (recognize / import without them / choose pages) → progress and Stop |
+| `file-import.tsx` | File picker, drag and drop, TXT decoding, PDF dialog: password (if any) → pages (all, one page, From/To, or several ranges) → text layer → OCR offer for image-only pages (recognize / import without them / choose pages) → progress and Stop |
 | `translate-control.tsx` | Source detection, searchable target list, long-text translation |
 | `voice-panel.tsx` | Selected voice (preview, favorite, clarity note), one-click favorite chips, “Browse all voices” |
 | `voice-browser.tsx` | Hierarchical browser in a dialog (full-screen on phones), opening on all language groups: language group → country flag cards (Arabic grouped by accent region) → voice cards; global search, gender/style/multilingual filters, breadcrumb + Back, Favorites view; remembers where it was left |
@@ -187,11 +189,14 @@ Nothing in the request path needs Python or a writable project folder. With `VER
 
 ## PDF import and OCR
 
-1. `openPdf` checks the signature and size, then pdf.js (in its worker) opens the document; passwords and damage give specific errors.
-2. `extractPdfText` reads the text layer of the selected pages and returns every page, marking image-only pages as empty instead of dropping them.
-3. If any page is empty, the dialog offers OCR for exactly those pages. `recognizePdfPages` renders each page to a canvas with pdf.js (about 216 dpi, at most 4096 px per side), recognizes it with tesseract.js (LSTM engine, WebAssembly, in a web worker) and releases the canvas before the next page.
-4. The engine files and `ara`/`eng` language data are copied from npm packages into `public/ocr` by `scripts/copy-vendor-assets.mjs` and loaded from the app's own origin (`workerPath`, `corePath`, `langPath`), with IndexedDB caching disabled. No third-party server is contacted; an E2E test asserts this.
-5. Results are merged with the text-layer pages in page order (`joinPages`). Pages with mean confidence below 70 are listed for proofreading; pages where nothing was recognized are named. Limits: 50 pages per OCR run, 180 s per page; Stop terminates the worker.
+1. **Choosing a file.** The kind comes from the file's first bytes (`lib/files/kind.ts`): `%PDF-` makes a PDF whatever the name or reported type (phones often report none, or `application/octet-stream`), `.txt` or text bytes make a TXT, anything else is refused with a message. Desktop pickers filter to PDF and TXT; on touch devices the filter also allows the generic binary type, because Android and iOS pickers grey out documents whose provider reports it, so a real PDF could not be tapped. The input is cleared after each choice, so the same file can be chosen again.
+2. **Opening.** `openPdf` checks the signature and size, then pdf.js opens the document in its worker. The app uses pdf.js's **legacy build**: the modern build calls the newest JavaScript built-ins without fallbacks (`Uint8Array#toHex`, `Map#getOrInsertComputed`, `Math.sumPrecise`, …), so Safari before 26.2 (any iPhone not on the latest iOS), Chrome before 145 and Firefox before 144 failed on every PDF, and the app reported it as a damaged file. The legacy build bundles polyfills for them. The worker file is named after the library version (`/pdfjs/pdf.worker-<version>.min.mjs`), so a cached worker can't pair with another version. Character maps (`cMapUrl`), standard fonts and the JBIG2/JPEG 2000 decoders (`wasmUrl`) are served from `/pdfjs/` too.
+3. **Errors.** `classifyPdfError` gives each failure its own code and message (`lib/files/pdf-messages.ts`): password needed or wrong (the dialog asks for it; it stays in memory), damaged structure, a feature pdf.js can't handle, a browser without the needed built-ins, the reader failing to load, out of memory, a file the browser can't read (e.g. a cloud file not downloaded), no page readable, cancelled, unexpected. The underlying message goes to the browser console for diagnosis; the document's text never does.
+4. **Pages.** All pages, a single page, a range with two number fields (From/To: the phone's number keypad is enough, no hyphen needed) or several ranges in a text field (a text keyboard, so iPhone users can type `-` and `,`). `parsePageSelection` accepts Arabic-Indic digits, the Arabic comma and any dash, sorts and de-duplicates, and refuses with a reason anything malformed, zero, reversed or past the last page; it never substitutes another range. The dialog shows the count and the pages selected.
+5. `extractPdfText` reads the text layer of the selected pages one at a time, releasing each page, and returns every page, marking image-only pages as empty instead of dropping them. A page pdf.js fails on is left out and named afterwards; the others are kept. Arabic lines get Arabic letter forms and diacritics on the right letter (`orderLineItems`, shared with the study workspace).
+6. If any page is empty, the dialog offers OCR for exactly those pages. `recognizePdfPages` renders each page to a canvas with pdf.js (about 216 dpi, at most 4096 px per side), recognizes it with tesseract.js (LSTM engine, WebAssembly, in a web worker) and releases the canvas before the next page.
+7. The engine files and `ara`/`eng` language data are copied from npm packages into `public/ocr` by `scripts/copy-vendor-assets.mjs` and loaded from the app's own origin (`workerPath`, `corePath`, `langPath`), with IndexedDB caching disabled. No third-party server is contacted; an E2E test asserts this.
+8. Results are merged with the text-layer pages in page order (`joinPages`). Pages with mean confidence below 70 are listed for proofreading; pages where nothing was recognized are named. Limits: 50 pages per OCR run, 180 s per page; Stop terminates the worker.
 
 ## Server safeguards
 

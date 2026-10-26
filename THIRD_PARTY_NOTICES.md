@@ -40,4 +40,10 @@ M4A and MP4 export run ffmpeg as a separate program: the one on the system `PATH
 
 ## PDF.js (Apache License 2.0)
 
-The study workspace renders lectures with [PDF.js](https://github.com/mozilla/pdf.js) (the `pdfjs-dist` package, Apache License 2.0). The `.textLayer` rules in `src/app/globals.css` are adapted from PDF.js's `web/pdf_viewer.css` (Copyright Mozilla Foundation, Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0).
+PDF import and the study workspace use [PDF.js](https://github.com/mozilla/pdf.js) (the `pdfjs-dist` package, Apache License 2.0); its legacy build bundles core-js polyfills (MIT License). The `.textLayer` rules in `src/app/globals.css` are adapted from PDF.js's `web/pdf_viewer.css` (Copyright Mozilla Foundation, Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0).
+
+`scripts/copy-vendor-assets.mjs` serves these files from `pdfjs-dist` unchanged under `/pdfjs/`, each folder with its licence files:
+
+- `cmaps/`: character maps, Copyright Adobe Systems Incorporated, BSD 3-Clause licence (`cmaps/LICENSE`).
+- `standard_fonts/`: Foxit fonts (BSD-style licence, Copyright PDFium Authors, `LICENSE_FOXIT`) and Liberation Sans (SIL Open Font License 1.1, `LICENSE_LIBERATION`).
+- `wasm/`: the JBIG2 decoder from PDFium (BSD 3-Clause, `LICENSE_JBIG2`), the OpenJPEG decoder (BSD 2-Clause, `LICENSE_OPENJPEG`) and qcms (MIT, `LICENSE_QCMS`), with Mozilla's build files under Apache 2.0 and BSD 2-Clause (`LICENSE_PDFJS_*`).

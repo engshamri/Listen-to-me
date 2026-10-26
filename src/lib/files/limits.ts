@@ -14,5 +14,3 @@ export const OCR_RENDER_SCALE = 3;
 export const OCR_MAX_CANVAS_SIDE = 4096;
 /** Mean word confidence (0-100) below which a page is flagged for proofreading. */
 export const OCR_LOW_CONFIDENCE = 70;
-
-export const ACCEPTED_FILE_TYPES = ".txt,.pdf,text/plain,application/pdf";

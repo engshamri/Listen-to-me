@@ -6,7 +6,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import { PDF_PAGE_TIMEOUT_MS } from "@/lib/files/limits";
 import type { OcrParagraph } from "@/lib/files/ocr";
-import { PdfError, isBlankText, withTimeout } from "@/lib/files/pdf";
+import { PdfError, classifyPdfError, isBlankText, withTimeout } from "@/lib/files/pdf";
 import { pageParagraphs, paragraphsText, type Paragraph } from "./layout";
 import type { StudyPage } from "./store";
 
@@ -19,14 +19,27 @@ export async function readPages(
 ): Promise<Omit<StudyPage, "docId">[]> {
   const total = doc.numPages;
   const pages: Omit<StudyPage, "docId">[] = [];
+  let failed = 0;
   for (let n = 1; n <= total; n++) {
     if (signal?.aborted) throw new PdfError("ABORTED");
-    const page = await withTimeout(doc.getPage(n), PDF_PAGE_TIMEOUT_MS);
-    const content = await withTimeout(page.getTextContent(), PDF_PAGE_TIMEOUT_MS);
-    const paragraphs = pageParagraphs(content.items, page.view, content.styles);
-    page.cleanup();
-    const hasText = !isBlankText(paragraphsText(paragraphs));
-    pages.push({ page: n, paragraphs: hasText ? paragraphs : [], source: hasText ? "text" : "none" });
+    try {
+      const page = await withTimeout(doc.getPage(n), PDF_PAGE_TIMEOUT_MS);
+      try {
+        const content = await withTimeout(page.getTextContent(), PDF_PAGE_TIMEOUT_MS);
+        const paragraphs = pageParagraphs(content.items, page.view, content.styles);
+        const hasText = !isBlankText(paragraphsText(paragraphs));
+        pages.push({ page: n, paragraphs: hasText ? paragraphs : [], source: hasText ? "text" : "none" });
+      } finally {
+        page.cleanup();
+      }
+    } catch (e) {
+      if (signal?.aborted) throw new PdfError("ABORTED");
+      const code = classifyPdfError(e);
+      if (code === "MEMORY" || code === "UNSUPPORTED_BROWSER" || code === "READER_FAILED") throw new PdfError(code, (e as Error)?.message);
+      // A page pdf.js can't read is kept without text (it can still be tried with OCR), never invented.
+      pages.push({ page: n, paragraphs: [], source: "none" });
+      if (++failed === total) throw new PdfError("EXTRACT_FAILED", (e as Error)?.message);
+    }
     onProgress?.(n, total);
     // Let the UI paint progress between pages.
     if (n % 4 === 0) await new Promise((r) => setTimeout(r, 0));

@@ -45,8 +45,10 @@ test("PDF: page count, page range, Arabic and English extraction", async ({ page
   await page.setInputFiles(fileInput, { name: "doc.pdf", mimeType: "application/pdf", buffer: pdf });
   const dialog = page.getByRole("dialog", { name: "Import PDF" });
   await expect(dialog.getByText("3 pages").first()).toBeVisible();
-  await dialog.getByLabel("Page range").first().check();
-  await dialog.getByRole("textbox", { name: "Page range" }).fill("2-3");
+  await dialog.getByRole("radio", { name: "Page range" }).check();
+  await dialog.getByLabel("From page").fill("2");
+  await dialog.getByLabel("To page").fill("3");
+  await expect(dialog.getByText("2 pages selected: 2-3")).toBeVisible();
   await dialog.getByRole("button", { name: "Extract text" }).click();
   await expect(dialog).toBeHidden();
   const text = await editor(page).inputValue();
@@ -128,11 +130,12 @@ test("mixed PDF: image-only pages are never dropped silently", async ({ page, br
 test("malformed and unsupported files are rejected safely", async ({ page }) => {
   await openFresh(page);
   await page.setInputFiles(fileInput, { name: "fake.pdf", mimeType: "application/pdf", buffer: Buffer.from("this is not a pdf at all") });
-  await expect(page.getByRole("dialog").getByText("This file isn't a valid PDF.")).toBeVisible();
-  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+  // Checked from the bytes right after choosing: no dialog opens for a file that isn't a PDF.
+  await expect(page.getByText("This file isn't a PDF, even though it is named like one.")).toBeVisible();
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   await page.setInputFiles(fileInput, { name: "report.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: Buffer.from("PK\u0003\u0004") });
-  await expect(page.getByText("Unsupported file type. Upload a .txt or .pdf file.")).toBeVisible();
+  await expect(page.getByText("This file type isn't supported. Choose a PDF or a TXT (plain text) file.")).toBeVisible();
 
   await page.setInputFiles(fileInput, { name: "binary.txt", mimeType: "text/plain", buffer: Buffer.from(Array.from({ length: 3000 }, (_, i) => (i % 5 === 0 ? 1 : 66))) });
   await expect(page.getByText("This file doesn't look like plain text.")).toBeVisible();

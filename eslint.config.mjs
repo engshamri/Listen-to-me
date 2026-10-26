@@ -13,7 +13,7 @@ const eslintConfig = [
     },
   },
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "public/pdf.worker.min.mjs", "public/ocr/**", ".cache/**", "playwright-report/**", "test-results/**"],
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "public/pdfjs/**", "public/ocr/**", ".cache/**", "playwright-report/**", "test-results/**"],
   },
 ];
 

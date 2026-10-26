@@ -3,6 +3,7 @@
 import { Bookmark } from "lucide-react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist/types/src/display/api";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { loadPdfJs } from "@/lib/files/pdf";
 import type { Box } from "@/lib/study/layout";
 import type { Annotation, HighlightColor } from "@/lib/study/store";
 import { normalizeForSearch } from "@/lib/text/search";
@@ -58,9 +59,6 @@ export const HIGHLIGHT_BG: Record<HighlightColor, string> = {
   pink: "rgb(244 114 182 / 0.35)",
 };
 
-type PdfJs = typeof import("pdfjs-dist");
-let pdfjsModule: Promise<PdfJs> | null = null;
-const loadPdfJs = () => (pdfjsModule ??= import("pdfjs-dist"));
 
 export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function PdfViewer(
   { pdf, pageCount, zoom, initialPage, annotations, focus, query, label, pageLabel, onPageChange, onSelection, className },
