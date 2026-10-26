@@ -27,12 +27,21 @@ export interface OcrProgress {
   page: number;
 }
 
+/** A recognized paragraph and where it is on the page ([left, top, width, height] as fractions). */
+export interface OcrParagraph {
+  text: string;
+  box: [number, number, number, number];
+  confidence: number;
+}
+
 export interface OcrResult {
   pages: PageTexts;
   /** Pages whose recognition confidence was low: the text needs proofreading. */
   lowConfidence: number[];
   /** Pages where nothing readable was recognized. */
   stillEmpty: number[];
+  /** With `paragraphs: true`: each page's paragraphs and its mean confidence (0–100). */
+  paragraphs?: Map<number, { paragraphs: OcrParagraph[]; confidence: number }>;
 }
 
 const LSTM_ONLY = 1;
@@ -94,7 +103,7 @@ function releaseCanvas(canvas: HTMLCanvasElement) {
 export async function recognizePdfPages(
   doc: PDFDocumentProxy,
   pages: number[],
-  { lang, signal, onProgress }: { lang: OcrLanguage; signal?: AbortSignal; onProgress?: (p: OcrProgress) => void },
+  { lang, signal, onProgress, paragraphs: withParagraphs = false }: { lang: OcrLanguage; signal?: AbortSignal; onProgress?: (p: OcrProgress) => void; paragraphs?: boolean },
 ): Promise<OcrResult> {
   const origin = window.location.origin;
   let current = { done: 0, total: pages.length };
@@ -124,6 +133,7 @@ export async function recognizePdfPages(
     const texts: PageTexts = new Map();
     const lowConfidence: number[] = [];
     const stillEmpty: number[] = [];
+    const paragraphs = new Map<number, { paragraphs: OcrParagraph[]; confidence: number }>();
     for (let i = 0; i < pages.length; i++) {
       const pageNo = pages[i];
       current = { done: i, total: pages.length };
@@ -131,8 +141,22 @@ export async function recognizePdfPages(
       const canvas = await withTimeout(renderPage(doc, pageNo, signal), OCR_PAGE_TIMEOUT_MS);
       try {
         const w = worker;
-        const { data } = await withTimeout(abortable(w.recognize(canvas), signal), OCR_PAGE_TIMEOUT_MS, stop);
+        const { data } = await withTimeout(abortable(w.recognize(canvas, {}, withParagraphs ? { text: true, blocks: true } : undefined), signal), OCR_PAGE_TIMEOUT_MS, stop);
         const text = tidyOcrText(data.text ?? "");
+        if (withParagraphs) {
+          const W = canvas.width || 1;
+          const H = canvas.height || 1;
+          const found = (data.blocks ?? [])
+            .flatMap((b) => b.paragraphs)
+            .map((p) => ({
+              // Wrapped lines become one paragraph; a word hyphenated at a line end is rejoined.
+              text: tidyOcrText(p.text).replace(/(\p{L})-\n(\p{Ll})/gu, "$1$2").replace(/\s*\n\s*/gu, " "),
+              box: [p.bbox.x0 / W, p.bbox.y0 / H, (p.bbox.x1 - p.bbox.x0) / W, (p.bbox.y1 - p.bbox.y0) / H] as OcrParagraph["box"],
+              confidence: p.confidence,
+            }))
+            .filter((p) => !isBlankText(p.text));
+          paragraphs.set(pageNo, { paragraphs: found, confidence: data.confidence });
+        }
         if (isBlankText(text)) {
           stillEmpty.push(pageNo);
           texts.set(pageNo, "");
@@ -145,7 +169,7 @@ export async function recognizePdfPages(
       }
     }
     onProgress?.({ stage: "recognizing", done: pages.length, total: pages.length, page: 1 });
-    return { pages: texts, lowConfidence, stillEmpty };
+    return { pages: texts, lowConfidence, stillEmpty, ...(withParagraphs ? { paragraphs } : {}) };
   } catch (e) {
     if (signal?.aborted) throw new PdfError("ABORTED");
     if (e instanceof PdfError) throw e;

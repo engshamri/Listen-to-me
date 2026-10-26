@@ -37,3 +37,7 @@ SOFTWARE.
 ## ffmpeg
 
 M4A and MP4 export run ffmpeg as a separate program: the one on the system `PATH`, or else the static build that the optional [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) npm package downloads at install time. Those builds are licensed under the GPL; see the license files the package installs next to the binary. No ffmpeg binary is stored in this repository.
+
+## PDF.js (Apache License 2.0)
+
+The study workspace renders lectures with [PDF.js](https://github.com/mozilla/pdf.js) (the `pdfjs-dist` package, Apache License 2.0). The `.textLayer` rules in `src/app/globals.css` are adapted from PDF.js's `web/pdf_viewer.css` (Copyright Mozilla Foundation, Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0).

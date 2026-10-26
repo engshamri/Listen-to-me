@@ -1,3 +1,4 @@
+import { IdbError as LibraryError, changeChannel, database, request } from "@/lib/idb";
 import type { Timeline } from "@/lib/tts/timeline";
 
 /*
@@ -52,13 +53,7 @@ export type NewRecording = Omit<LibraryItem, "id" | "title" | "excerpt" | "creat
   audio: Blob;
 };
 
-export type LibraryErrorCode = "UNAVAILABLE" | "QUOTA" | "NOT_FOUND" | "FAILED";
-
-export class LibraryError extends Error {
-  constructor(readonly code: LibraryErrorCode) {
-    super(code);
-  }
-}
+export { IdbError as LibraryError, type IdbErrorCode as LibraryErrorCode } from "@/lib/idb";
 
 const DB_NAME = "asmani-library";
 const DB_VERSION = 1;
@@ -87,112 +82,13 @@ export function sortItems(items: LibraryItem[]): LibraryItem[] {
   return items.slice().sort((a, b) => Math.max(b.createdAt, b.lastPlayedAt ?? 0) - Math.max(a.createdAt, a.lastPlayedAt ?? 0));
 }
 
-function toError(e: unknown): LibraryError {
-  if (e instanceof LibraryError) return e;
-  const name = (e as { name?: string } | null)?.name;
-  return new LibraryError(name === "QuotaExceededError" ? "QUOTA" : "FAILED");
-}
-
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-function openDb(): Promise<IDBDatabase> {
-  dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
-    let req: IDBOpenDBRequest;
-    try {
-      if (typeof indexedDB === "undefined") throw new LibraryError("UNAVAILABLE");
-      req = indexedDB.open(DB_NAME, DB_VERSION);
-    } catch (e) {
-      reject(e instanceof LibraryError ? e : new LibraryError("UNAVAILABLE"));
-      return;
-    }
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      for (const name of ["items", "content", "audio"]) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
-    };
-    req.onsuccess = () => {
-      const db = req.result;
-      // Another tab is upgrading the database: step aside and reopen on next use.
-      db.onversionchange = () => {
-        db.close();
-        dbPromise = null;
-      };
-      resolve(db);
-    };
-    req.onerror = () => reject(new LibraryError("UNAVAILABLE"));
-  }).catch((e) => {
-    dbPromise = null;
-    throw e;
-  });
-  return dbPromise;
-}
-
-/** Runs `fn` in one transaction and resolves with its result once the transaction has committed. */
-async function transact<T>(stores: string[], mode: IDBTransactionMode, fn: (tx: IDBTransaction) => T | Promise<T>): Promise<T> {
-  const db = await openDb();
-  return new Promise<T>((resolve, reject) => {
-    let result: T;
-    let tx: IDBTransaction;
-    try {
-      tx = db.transaction(stores, mode);
-    } catch (e) {
-      reject(toError(e));
-      return;
-    }
-    tx.oncomplete = () => resolve(result);
-    tx.onabort = () => reject(toError(tx.error));
-    Promise.resolve(fn(tx)).then(
-      (r) => {
-        result = r;
-      },
-      (e) => {
-        try {
-          tx.abort();
-        } catch {
-          // Already finished.
-        }
-        reject(toError(e));
-      },
-    );
-  });
-}
-
-function request<T>(req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Change notifications, in this tab and others.
-// ---------------------------------------------------------------------------
-
-const listeners = new Set<() => void>();
-let channel: BroadcastChannel | null = null;
-
-function notify() {
-  listeners.forEach((l) => l());
-  try {
-    channel?.postMessage("changed");
-  } catch {
-    // Channel closed.
-  }
-}
-
-export function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  if (!channel && typeof BroadcastChannel !== "undefined") {
-    channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = () => listeners.forEach((l) => l());
-  }
-  return () => {
-    listeners.delete(listener);
-    if (!listeners.size && channel) {
-      channel.close();
-      channel = null;
-    }
-  };
-}
+const db = database(DB_NAME, DB_VERSION, (idb) => {
+  for (const name of ["items", "content", "audio"]) if (!idb.objectStoreNames.contains(name)) idb.createObjectStore(name);
+});
+const transact = db.transact;
+const changes = changeChannel(CHANNEL);
+const notify = changes.notify;
+export const subscribe = changes.subscribe;
 
 // ---------------------------------------------------------------------------
 // Operations
@@ -282,5 +178,5 @@ export async function storageUsage(): Promise<number | null> {
 
 /** For tests: forget the open connection (e.g. after replacing the IndexedDB factory). */
 export function resetConnection(): void {
-  dbPromise = null;
+  db.reset();
 }

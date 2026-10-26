@@ -83,6 +83,46 @@ tests/
 4. Cancel aborts all requests; the route handler sees `request.signal` abort and closes its connection to the speech service.
 5. Chunks are joined into one MP3 (same codec settings throughout); duration is measured from the MP3 frames.
 
+## Study workspace
+
+`/study` lists courses and lectures; `/study/[id]` is the workspace. It is all client-side: the PDF never reaches the server.
+
+- **Storage** (`lib/study/store.ts`, IndexedDB `asmani-study`, separate from the library):
+
+  | Store | Holds |
+  |---|---|
+  | `courses` | Course names |
+  | `docs` | Lecture metadata and reading progress (last page, pages visited, completed, scanned pages) |
+  | `files` | The PDF itself |
+  | `pages` | Paragraphs and saved translations, keyed `[docId, page]` |
+  | `annotations` | Highlights, notes and bookmarks |
+  | `glossary` | Preferred translations of terms |
+
+  It uses the shared IndexedDB helpers in `lib/idb.ts`, like the library.
+- **Import** (`lib/study/import.ts`): pdf.js reads every page's text items in the browser, up to 600 pages. The title comes from the PDF's Title field when it is a real one (not "Untitled", a file name or a web address), otherwise from the file name.
+- **Layout** (`lib/study/layout.ts`): `pageParagraphs` turns text items into paragraphs. Each paragraph keeps its box on the page (fractions of the page), which links the text panel, translations and the PDF. Kinds:
+  - **heading:** larger text;
+  - **list:** a marker, or a short line ending a sentence (list items drawn without bullet characters);
+  - **code:** monospace fonts, with indentation rebuilt from the character width;
+  - **math:** math symbols and few words;
+  - **table:** three or more cells, separated by wide gaps or the wide whitespace items some producers write between cells; rows are kept as "cell | cell";
+  - **text:** everything else; wrapped lines are joined and words hyphenated at line ends rejoined.
+
+  Right-to-left lines are ordered right to left, and diacritics drawn as separate items attach to the nearest letter. Persian and Urdu letter forms that fonts often emit for Arabic (ی ک ھ) become the Arabic letters, unless the text has Persian- or Urdu-only letters. `tests/unit/study-pdf.test.ts` checks all of this on a real PDF (`tests/fixtures/lecture-enzymes.pdf`, made by `scripts/make-test-lecture.mjs`).
+- **Viewer** (`components/study/pdf-viewer.tsx`):
+  - **Rendering:** every page is a box of the right size. Only pages within about one screen of the visible area are drawn (canvas plus pdf.js `TextLayer` for selection, at most about 6 megapixels each); the rest are released.
+  - **Current page:** the page under the upper third of the viewer.
+  - **Stable position:** when page sizes change (measured, zoom, window width), the view stays on the same spot.
+  - **Overlays:** highlights sit under the transparent text layer, so text can still be selected over them; search matches are marked in the text layer.
+- **Translation** (`lib/study/translate.ts`):
+  - **What is sent:** paragraphs (of several pages) go in requests of at most about 12,000 characters, joined with blank lines and split back afterwards. If the translator merges paragraphs, that batch is redone one paragraph at a time. Code and formulas are never sent.
+  - **Glossary:** terms become `[[n]]` placeholders, which the translator leaves untouched (verified), and come back as the preferred translation, optionally with the original term in brackets.
+  - **Whole lecture:** translated in groups of 8 pages, each group saved before the next; HTTP 429 waits for `Retry-After`.
+- **OCR:** scanned pages use the existing on-device Tesseract engine. A new option returns paragraphs with their boxes and confidence; pages are recognized 5 at a time, saved after each group, and labelled with their confidence.
+- **Consent** (`components/study/consent.tsx`): before the first translation or listening, a dialog names the service (Google Translate, Microsoft) and what is sent. The answer is kept per service in this browser and can be withdrawn on the Study page.
+- **Listening** (`components/study/study-player.tsx`): the existing engine generates the audio (an Arabic voice for Arabic text, else the student's English voice). It shows the current sentence and word (`useReadAlong`), previous/next and repeat sentence, and listening speed, and can bookmark the sentence being read.
+- **Security:** files must be PDFs of at most 50 MB and 600 pages; pdf.js 6 runs in its worker and has no `eval` code path; document text is always rendered as text, never as HTML.
+
 ## Read-along
 
 The browser asks `/api/tts` for word timings with `"marks": true`. The response is then `multipart/form-data` with two parts: `audio` (the MP3) and `words` (JSON `[{ text, start, end }]`, seconds). Without `marks` the response stays plain `audio/mpeg`, so other callers are unaffected. The backup voice returns an empty `words` list.
