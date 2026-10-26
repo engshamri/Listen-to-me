@@ -1,14 +1,16 @@
 "use client";
 
-import { AArrowDown, AArrowUp, Pause, Play, SkipBack, SkipForward } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AArrowDown, AArrowUp, ListTree, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { PLAYBACK_RATES, READING_SIZES, useSpeechSettings } from "./hooks";
 import { ReadAlong, seekAndPlay, seekTo } from "./read-along";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n/provider";
 import { locate } from "@/lib/text/align";
+import { chapterStarts, detectChapters } from "@/lib/text/chapters";
 import type { Timeline } from "@/lib/tts/timeline";
 
 /** Start time of the sentence before or after the one playing at `t`; "previous" first restarts the current sentence. */
@@ -58,6 +60,14 @@ export function ReadingMode({
   const [settings, setSettings] = useSpeechSettings();
   const { playing, time } = usePlayback(audio);
   const fontSize = READING_SIZES[settings.readingSize] ?? READING_SIZES[1];
+  const [chaptersOpen, setChaptersOpen] = useState(false);
+  const chapters = useMemo(() => detectChapters(timeline.text), [timeline.text]);
+  const starts = useMemo(() => chapterStarts(chapters, timeline.sentences), [chapters, timeline.sentences]);
+  let currentChapter = -1;
+  starts.forEach((start, i) => {
+    if (start !== null && start <= time + 0.05) currentChapter = i;
+  });
+  const chapterTitle = (i: number) => chapters[i].title || t("chapters.beginning");
 
   const toggle = () => {
     if (!audio) return;
@@ -95,8 +105,51 @@ export function ReadingMode({
             <DialogTitle className="truncate" dir="auto">
               {title ?? t("readAlong.title")}
             </DialogTitle>
+            {currentChapter >= 0 && (
+              <p className="text-muted-foreground mt-0.5 truncate text-[13px]" dir="auto">
+                {t("chapters.current", { title: chapterTitle(currentChapter) })}
+              </p>
+            )}
             <DialogDescription className="mt-0.5 hidden text-[13px] sm:block">{t("readAlong.keys")}</DialogDescription>
           </div>
+          {chapters.length >= 2 && (
+            <Popover open={chaptersOpen} onOpenChange={setChaptersOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" aria-label={t("chapters.title")}>
+                  <ListTree aria-hidden />
+                  <span className="hidden sm:inline">{t("chapters.title")}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-1.5">
+                <nav aria-label={t("chapters.title")}>
+                  <ul className="scroll-thin max-h-[60vh] overflow-y-auto">
+                    {chapters.map((c, i) => {
+                      const start = starts[i];
+                      return (
+                        <li key={c.from}>
+                          <button
+                            type="button"
+                            disabled={start === null}
+                            aria-current={i === currentChapter ? "true" : undefined}
+                            onClick={() => {
+                              if (audio && start !== null) seekAndPlay(audio, start);
+                              setChaptersOpen(false);
+                            }}
+                            className="hover:bg-accent aria-[current=true]:bg-primary-soft flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-start text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <span className="min-w-0 flex-1 truncate" dir="auto">
+                              {chapterTitle(i)}
+                            </span>
+                            <span className="text-muted-foreground shrink-0 text-[12px] tabular-nums">{start === null ? t("chapters.notGenerated") : fmt.clock(start)}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              </PopoverContent>
+            </Popover>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"

@@ -1,8 +1,9 @@
 "use client";
 
-import { ClipboardPaste, FileText, FileUp, Loader2, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { ClipboardPaste, FileText, FileUp, ListTree, Loader2, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ChapterPicker } from "./chapter-picker";
 import { useFileImport, type ImportedFile } from "./file-import";
 import { useLatest } from "./hooks";
 import { Notice, Panel, ProgressBar, StepHeading } from "./primitives";
@@ -14,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { decodeTextFile, TEXT_ENCODINGS, type TextEncoding } from "@/lib/files/decode-text";
 import { MAX_PDF_BYTES, MAX_TEXT_CHARS, MAX_TXT_BYTES } from "@/lib/files/limits";
 import { useI18n } from "@/lib/i18n/provider";
+import { detectChapters } from "@/lib/text/chapters";
 import { applyCleanup, type CleanupAction } from "@/lib/text/cleanup";
 import { splitIntoChunks } from "@/lib/text/chunk";
 import { countWords, detectScript, estimateDurationSeconds, scriptMismatch, type Script } from "@/lib/text/stats";
@@ -52,10 +54,13 @@ interface TextPanelProps {
   speed: number;
   onGenerate: () => void;
   onFindVoice: (lang: string | null) => void;
+  /** Chapters chosen for conversion (indexes), or null for the whole text. */
+  chosenChapters: number[] | null;
+  onChooseChapters: (chosen: number[] | null) => void;
   className?: string;
 }
 
-export function TextPanel({ text, onTextChange, replaceText, voice, speed, onGenerate, onFindVoice, className }: TextPanelProps) {
+export function TextPanel({ text, onTextChange, replaceText, voice, speed, onGenerate, onFindVoice, chosenChapters, onChooseChapters, className }: TextPanelProps) {
   const { t, locale, dir, fmt } = useI18n();
   const textRef = useLatest(text);
   const [file, setFile] = useState<ImportedFile | null>(null);
@@ -76,6 +81,10 @@ export function TextPanel({ text, onTextChange, replaceText, voice, speed, onGen
     };
   }, [deferred, speed, voice.lang]);
   const overLimit = text.length > MAX_TEXT_CHARS;
+  const chapterCount = useMemo(() => (deferred.length > MAX_TEXT_CHARS ? 0 : detectChapters(deferred).length), [deferred]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // The picker works on the text as it is now, so its choices match what Generate will read.
+  const pickerChapters = useMemo(() => (pickerOpen ? detectChapters(text) : []), [pickerOpen, text]);
   const mismatch = stats.words >= 3 && scriptMismatch(stats.script, voice.lang, voice.multilingual);
 
   const onImport = useCallback(
@@ -337,6 +346,22 @@ export function TextPanel({ text, onTextChange, replaceText, voice, speed, onGen
           <TranslateControl text={text} disabled={!text.trim() || Boolean(translating)} voiceLang={voice.lang} onTranslate={(target, source) => void translate(target, source)} />
         </div>
       </div>
+
+      {chapterCount >= 2 && !overLimit && (
+        <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px]", chosenChapters ? "font-medium" : "text-muted-foreground")}>
+          <ListTree className="size-4 shrink-0" aria-hidden />
+          <span>{chosenChapters ? t("chapters.selected", { count: chosenChapters.length, total: chapterCount }) : t("chapters.found", { count: chapterCount })}</span>
+          <Button variant="link" size="sm" className="h-auto px-1 py-0.5" onClick={() => setPickerOpen(true)}>
+            {chosenChapters ? t("chapters.change") : t("chapters.choose")}
+          </Button>
+          {chosenChapters && (
+            <Button variant="link" size="sm" className="h-auto px-1 py-0.5" onClick={() => onChooseChapters(null)}>
+              {t("chapters.useAll")}
+            </Button>
+          )}
+        </div>
+      )}
+      <ChapterPicker open={pickerOpen} onOpenChange={setPickerOpen} text={text} chapters={pickerChapters} chosen={chosenChapters} speed={speed} onApply={onChooseChapters} />
 
       {overLimit && (
         <Notice tone="error" role="alert">

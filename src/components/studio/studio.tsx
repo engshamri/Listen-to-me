@@ -15,6 +15,7 @@ import { libraryErrorKey, saveResult } from "@/components/library/library-hooks"
 import { mp3DurationSeconds } from "@/lib/audio/mp3";
 import { MAX_TEXT_CHARS } from "@/lib/files/limits";
 import { useI18n } from "@/lib/i18n/provider";
+import { chaptersText, detectChapters } from "@/lib/text/chapters";
 import { prepareForSpeech, splitIntoChunks } from "@/lib/text/chunk";
 import { GenerationError, assemble, completedCount, contiguousPrefix, createJob, runJob, type Job } from "@/lib/tts/engine";
 import { buildTimeline } from "@/lib/tts/timeline";
@@ -62,6 +63,11 @@ function StudioInner() {
   const [browserOpen, setBrowserOpen] = useState(false);
   const [browserNav, setBrowserNav] = useState<BrowserNav | null>(null);
   const [browserFilters, setBrowserFilters] = useState<BrowserFilters>(EMPTY_BROWSER_FILTERS);
+
+  // Chapters chosen for conversion; they apply only to the exact text they were chosen for.
+  const [chapterChoice, setChapterChoice] = useState<{ text: string; chosen: number[] } | null>(null);
+  const chosenChapters = chapterChoice && chapterChoice.text === text ? chapterChoice.chosen : null;
+  const chosenRef = useLatest(chosenChapters);
 
   const [gen, setGen] = useState<GenState>({ phase: "idle" });
   const activeRef = useRef<ActiveJob | null>(null);
@@ -211,14 +217,16 @@ function StudioInner() {
       document.getElementById("editor")?.focus();
       return;
     }
-    const snapshot = textRef.current.replace(/\r\n?/g, "\n");
+    const full = textRef.current.replace(/\r\n?/g, "\n");
+    const chosen = chosenRef.current;
+    const snapshot = (chosen && chaptersText(full, detectChapters(full), chosen)) || full;
     const displayChunks = splitIntoChunks(snapshot, { locale: voice.lang });
     const chunks = displayChunks.map((c) => prepareForSpeech(c, { lang: voice.lang, pauseAtLineBreaks: settings.pauses }));
     const job = createJob({ voiceId: voice.id, rate: rateString(settings.speed), pitch: pitchString(settings.pitch) }, chunks);
     const active = { job, voiceId: voice.id, speed: settings.speed, pitch: settings.pitch, text: snapshot, displayChunks, locale: voice.lang };
     activeRef.current = active;
     void run(active);
-  }, [gen.phase, disabledReason, voice, settings, run, textRef]);
+  }, [gen.phase, disabledReason, voice, settings, run, textRef, chosenRef]);
 
   /** Opens the browser where it was left, or at the selected voice's country the first time. */
   const openBrowser = useCallback(
@@ -259,6 +267,8 @@ function StudioInner() {
           speed={settings.speed}
           onGenerate={generate}
           onFindVoice={findVoice}
+          chosenChapters={chosenChapters}
+          onChooseChapters={(chosen) => setChapterChoice(chosen ? { text, chosen } : null)}
         />
         <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:gap-5">
           <VoicePanel

@@ -35,7 +35,7 @@ src/
     i18n/                    Typed dictionaries (en, ar), plural rules, formatters, provider
     theme/                   Theme list, provider, WCAG contrast helpers
     text/                    Chunking, statistics, search normalization, clean-up, line splitting,
-                             word alignment for read-along (align.ts)
+                             word alignment for read-along (align.ts), chapter detection (chapters.ts)
     files/                   TXT decoding, PDF extraction, OCR of scanned pages, limits
     library/store.ts         Saved recordings in IndexedDB (no dependency), change notifications
     voices/                  Catalog access/filters, language categories, favorites store,
@@ -140,6 +140,20 @@ Nothing in the request path needs Python or a writable project folder. With `VER
 | Path traversal | Preview cache file names come from catalog ids matching `[\w-]+` |
 | Non-audio uploads | `/api/convert` checks for MP3 frame sync / ID3 before ffmpeg |
 | Headers | nosniff, frame-deny, referrer policy, permissions policy, COOP, no `X-Powered-By` |
+
+## Chapters
+
+`lib/text/chapters.ts` finds headings line by line:
+
+1. **Markdown** `#` to `####` headings.
+2. **Keyword lines** (Chapter, Lesson, Lecture, Unit, Part, Section, Module, Week or Topic + a number, and الفصل، الدرس، المحاضرة، الوحدة، الباب، الجزء، القسم، المبحث، الموضوع، الأسبوع). They must start a block, and a longer line that ends like a sentence is not a heading.
+3. **Numbered headings** ("2.1 Light") alone between blank lines.
+4. **Fallback**, only when none of the above exist: short lines alone between blank lines, without sentence-ending punctuation.
+
+Headings with only blank lines between them merge ("Part 1 · Chapter 1"). Text before the first heading becomes its own chapter when it is at least 80 characters; otherwise it is the document's title and joins the first chapter. Fewer than two chapters means no chapter UI.
+
+- **Before generating:** the text panel shows the chapter count and a picker. The choice is stored with the exact text it was made for, so any edit resets it. `chaptersText` joins the chosen chapters in document order, and that becomes the generation snapshot.
+- **In reading mode:** chapters are detected again on the recording's text. `chapterStarts` maps each one to its first sentence's start time (null when that part was not generated).
 
 ## Library
 
