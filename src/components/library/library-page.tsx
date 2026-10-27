@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { downloadBlob, exportNotes, inProgress, libraryErrorKey, useLibraryItems } from "./library-hooks";
 import { LibraryPlayer } from "./library-player";
+import { BackButton } from "@/components/app/back-button";
 import { useSpeechSettings } from "@/components/studio/hooks";
 import { Notice, ProgressBar } from "@/components/studio/primitives";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,8 @@ export function LibraryPage() {
   const shown = useMemo(() => (items ?? []).filter((i) => matchesQuery(normalizeForSearch(`${i.title} ${i.excerpt}`), query)), [items, query]);
 
   return (
-    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 pt-6 pb-10 outline-none sm:px-6">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 pt-4 pb-10 outline-none sm:px-6">
+      <BackButton />
       <div className="mb-5">
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight sm:text-[28px]">
           <Library className="text-primary size-7" aria-hidden />

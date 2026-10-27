@@ -15,6 +15,10 @@ const en = {
     about: "About",
     support: "Support the project",
     library: "My library",
+    tools: "Main menu",
+    back: "Back",
+    /** Names under the header icons on phones. */
+    short: { library: "Library", language: "Language", theme: "Theme", support: "Support", about: "About" },
   },
   page: {
     title: "Text to speech",
@@ -803,7 +807,6 @@ const en = {
   support: {
     metaTitle: "Support Listen to me",
     metaDescription: "Optional cryptocurrency donations (USDT on Tron, BTC on X Layer) that support the development and hosting of Listen to me.",
-    back: "Back to the studio",
     title: "Support Listen to me",
     intro: "Listen to me is free to use, with no ads and no sign-up. If it is useful to you, a donation helps keep it that way.",
     helpsTitle: "Donations help with",

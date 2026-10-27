@@ -256,6 +256,11 @@ Stored in `localStorage` (`asmani:favorites`, newest first, max 100) by `lib/voi
 
 `scripts/voice-qa/run_audit.py` records every voice, measures the audio with ffmpeg and transcribes it with Whisper large-v3 (faster-whisper) to compute intelligibility against same-language peers. Verdicts go to `src/data/voice-quality.json`; `npm run catalog` marks voices with a confirmed failure as unavailable. The UI shows a “Clarity verified” chip for verified voices and offers multilingual voices whose reading of Arabic passed the test. Full method and results: [VOICE-QUALITY.md](VOICE-QUALITY.md).
 
+## Navigation
+
+- **Header** (`components/app/app-header.tsx`): Study, My library, interface language, theme, Support and About. Below the `sm` breakpoint each control shows a short name under its icon (as wide as the name needs, at least 40 × 48 px; 10 px names below 360 px) and the logo stands for the app name, which stays in the link for screen readers. From `sm` up the compact desktop look stays, with tooltips on the icon-only buttons. Every visible name is part of the control's accessible name.
+- **Back** (`components/app/back-button.tsx`) at the top of Study, My library, Support, the PDF check and flashcard review (the lecture workspace keeps its toolbar link to all lectures). `lib/nav-history.ts` records, per tab in sessionStorage, the pages shown (returning to the page before is a pop, anything else a push). Back calls `router.back()` when this tab showed another page of the app just before; otherwise it opens the page's parent (`/`, or `/study` for flashcard review), so a page opened from a bookmark or another site never leads out of the app. It is a real link to that parent, so it works before scripts load and in a new tab. Dialogs keep their own close button and Escape.
+
 ## Theming and localization
 
 - 18 themes + System, each a CSS custom-property block (`[data-theme="…"]`) with surface, text, accent, border, focus, status, shadow and a soft background tint. Components use semantic tokens only (`bg-card`, `text-muted-foreground`, `bg-primary`, …). `tests/unit/themes.test.ts` checks 20 contrast pairs in every theme; the axe browser scan checks rendered contrast.

@@ -12,10 +12,13 @@ const ar: Widen<Messages> = {
   header: {
     skip: "انتقل إلى المحتوى الرئيسي",
     language: "لغة الواجهة",
-    theme: "السمة",
+    theme: "المظهر",
     about: "حول الموقع",
     support: "ادعم المشروع",
     library: "مكتبتي",
+    tools: "القائمة الرئيسية",
+    back: "رجوع",
+    short: { library: "مكتبتي", language: "اللغة", theme: "المظهر", support: "دعم", about: "حول" },
   },
   page: {
     title: "تحويل النص إلى كلام",
@@ -854,7 +857,6 @@ const ar: Widen<Messages> = {
   support: {
     metaTitle: "ادعم مشروع اسمعني",
     metaDescription: "تبرعات اختيارية بالعملات الرقمية (USDT على شبكة Tron، وBTC على شبكة X Layer) لدعم تطوير «اسمعني» واستضافته.",
-    back: "العودة إلى الاستوديو",
     title: "ادعم مشروع اسمعني",
     intro: "«اسمعني» مجاني الاستخدام، بلا إعلانات ولا تسجيل. وإن كان مفيداً لك، فتبرعك يساعد على أن يبقى كذلك.",
     helpsTitle: "تساعد التبرعات في",

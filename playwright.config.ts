@@ -33,7 +33,7 @@ export default defineConfig({
     },
     {
       name: "iphone-webkit",
-      testMatch: ["pdf-import.spec.ts", "text-tools.spec.ts"],
+      testMatch: ["pdf-import.spec.ts", "text-tools.spec.ts", "navigation.spec.ts"],
       use: { ...devices["iPhone 13"] },
     },
   ],

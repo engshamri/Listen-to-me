@@ -7,7 +7,7 @@ test("English is the default; Arabic switches to RTL, persists, and renders serv
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Text to speech");
 
-  await page.getByRole("button", { name: "Interface language" }).click();
+  await page.getByRole("button", { name: "Language: English" }).click();
   await page.getByRole("menuitemradio", { name: "العربية" }).click();
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("html")).toHaveAttribute("lang", "ar");

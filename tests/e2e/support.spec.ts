@@ -123,7 +123,7 @@ test("header, footer and About lead to the support page", async ({ page }) => {
   await expect(page).toHaveURL(/\/support$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Support Listen to me");
 
-  await page.getByRole("link", { name: "Back to the studio" }).click();
+  await page.getByRole("link", { name: "Back", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole("contentinfo").getByRole("link", { name: "Support" }).click();
   await expect(page).toHaveURL(/\/support$/);

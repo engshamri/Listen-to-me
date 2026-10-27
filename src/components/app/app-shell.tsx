@@ -1,10 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AboutDialog, type AboutSection } from "./about-dialog";
 import { AppFooter } from "./app-footer";
 import { AppHeader } from "./app-header";
 import { useI18n } from "@/lib/i18n/provider";
+import { recordPage } from "@/lib/nav-history";
 
 interface ShellContextValue {
   openAbout: (section?: AboutSection) => void;
@@ -23,6 +25,9 @@ export function AppShell({ year, children }: { year: number; children: ReactNode
   const [about, setAbout] = useState<{ open: boolean; section?: AboutSection }>({ open: false });
   const openAbout = useCallback((section?: AboutSection) => setAbout({ open: true, section }), []);
   const value = useMemo(() => ({ openAbout }), [openAbout]);
+  // The pages shown in this tab, for the Back button (see nav-history.ts).
+  const pathname = usePathname();
+  useEffect(() => recordPage(pathname), [pathname]);
 
   return (
     <ShellContext.Provider value={value}>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PROVIDERS } from "./consent";
+import { BackButton } from "@/components/app/back-button";
 import { dueCards } from "./flashcards";
 import { BackupSection } from "./study-backup";
 import { useCards, useLectures, useNow, useQuizResults, useStudySettings } from "./study-hooks";
@@ -46,7 +47,8 @@ export function StudyHome() {
   const fail = (e: unknown) => toast.error(t((e as { code?: string })?.code === "QUOTA" ? "library.errors.QUOTA" : "library.errors.FAILED"));
 
   return (
-    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-10 outline-none sm:px-6">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 pt-4 pb-10 outline-none sm:px-6">
+      <BackButton />
       <div className="mb-5">
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight sm:text-[28px]">
           <GraduationCap className="text-primary size-7" aria-hidden />

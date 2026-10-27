@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Palette } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -35,7 +35,8 @@ function Miniature({ id, className }: { id: ThemeId; className?: string }) {
   );
 }
 
-export function ThemeGallery() {
+/** triggerClassName / triggerLabel: the header's phone layout (a name under the icon). */
+export function ThemeGallery({ triggerClassName, triggerLabel }: { triggerClassName?: string; triggerLabel?: ReactNode } = {}) {
   const { t } = useI18n();
   const { theme, setTheme, previewTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -81,8 +82,9 @@ export function ThemeGallery() {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={t("header.theme")}>
+            <Button variant="ghost" size="icon-sm" className={triggerClassName} aria-label={t("header.theme")}>
               <Palette aria-hidden />
+              {triggerLabel}
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>

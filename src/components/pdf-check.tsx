@@ -3,6 +3,7 @@
 import { CheckCircle2, Circle, FileSearch, Loader2, RotateCcw, XCircle } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BackButton } from "@/components/app/back-button";
 import { DiagnosticActions } from "@/components/studio/pdf-diagnostics";
 import { Button } from "@/components/ui/button";
 import { appBuild, browserFeatures, diagnosticReport } from "@/lib/files/pdf-diagnostics";
@@ -143,7 +144,8 @@ export function PdfCheck() {
   const allOk = STEPS.every((id) => steps[id].status === "ok");
 
   return (
-    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-2xl flex-1 px-4 pt-6 pb-10 outline-none sm:px-6">
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-10 outline-none sm:px-6">
+      <BackButton />
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
         <FileSearch className="text-primary size-7" aria-hidden />
         {t("pdfCheck.title")}

@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft, Layers } from "lucide-react";
-import Link from "next/link";
+import { Layers } from "lucide-react";
 import { useState } from "react";
 import { CardReview, dueCards } from "./flashcards";
 import { useCards, useLectures, useNow } from "./study-hooks";
+import { BackButton } from "@/components/app/back-button";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Card } from "@/lib/study/store";
@@ -22,13 +22,8 @@ export function StudyReview() {
   const nextDue = cards.reduce<number | null>((min, c) => (min === null || c.srs.due < min ? c.srs.due : min), null);
 
   return (
-    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-2xl flex-1 px-4 pt-6 pb-10 outline-none sm:px-6">
-      <Button asChild size="sm" variant="ghost" className="mb-3 px-2">
-        <Link href="/study">
-          <ArrowLeft className="rtl:rotate-180" aria-hidden />
-          {t("study.back")}
-        </Link>
-      </Button>
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-10 outline-none sm:px-6">
+      <BackButton fallback="/study" />
       <h1 className="mb-1 flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
         <Layers className="text-primary size-6" aria-hidden />
         {t("study.review.title")}

@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Bitcoin, Check, ChevronDown, Copy, Download, HandHeart, ShieldCheck, TriangleAlert } from "lucide-react";
-import Link from "next/link";
+import { Bitcoin, Check, ChevronDown, Copy, Download, HandHeart, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { BackButton } from "@/components/app/back-button";
 import { Notice, Panel } from "@/components/studio/primitives";
 import { Button } from "@/components/ui/button";
 import { DONATION_METHODS, qrDownloadPath, qrImagePath, type DonationMethod, type DonationMethodId } from "@/lib/donations";
@@ -159,13 +159,10 @@ export function SupportPage() {
   const { t } = useI18n();
 
   return (
-    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-10 outline-none sm:px-6">
-      <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 rounded-md text-sm font-medium">
-        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-        {t("support.back")}
-      </Link>
+    <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 pt-4 pb-10 outline-none sm:px-6">
+      <BackButton />
 
-      <div className="mt-5 max-w-3xl">
+      <div className="mt-2 max-w-3xl">
         <span aria-hidden className="bg-primary-soft text-primary-soft-foreground flex size-11 items-center justify-center rounded-full">
           <HandHeart className="size-5" />
         </span>
