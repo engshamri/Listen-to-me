@@ -159,7 +159,12 @@ for (const version of VERSIONS) {
     return report.split("\n").find((l) => l.startsWith("Error:"));
   });
   await check("no uncaught page errors", async () => {
-    if (errors.length) throw new Error(errors.join(" | "));
+    // When a navigation cancels requests still in flight, Playwright's Windows WebKit (also its
+    // current 27.x build) reports them as "…due to access control checks" or "Failed to load
+    // chunk"; Edge doesn't, and the requested files load fine. Anything else counts.
+    const real = errors.filter((e) => !/due to access control checks|Failed to load chunk/.test(e));
+    if (real.length) throw new Error(real.join(" | "));
+    return errors.length ? `${errors.length} cancelled-request message(s) from navigation ignored` : "";
   });
   await browser.close();
 }
