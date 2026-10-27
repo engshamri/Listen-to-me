@@ -4,6 +4,7 @@ import { FileText, Loader2, LockKeyhole, ScanText } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DiagnosticActions } from "./pdf-diagnostics";
 import { Notice, ProgressBar } from "./primitives";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,18 +14,19 @@ import { pickerAccept, sniffFile, type KindResult } from "@/lib/files/kind";
 import { MAX_OCR_PAGES, MAX_PDF_BYTES, MAX_PDF_PAGES_PER_IMPORT, MAX_TEXT_CHARS, MAX_TXT_BYTES } from "@/lib/files/limits";
 import { OCR_LANGUAGES, recognizePdfPages, type OcrLanguage, type OcrProgress } from "@/lib/files/ocr";
 import {
-  classifyPdfError,
   destroyPdf,
   extractPdfText,
   formatPageList,
   joinPages,
   openPdf,
   parsePageSelection,
+  PdfError,
   westernDigits,
   type PageSelection,
   type PdfErrorCode,
   type PdfExtraction,
 } from "@/lib/files/pdf";
+import { diagnosticReport } from "@/lib/files/pdf-diagnostics";
 import { PDF_ERROR_KEYS, pageSelectionMessage } from "@/lib/files/pdf-messages";
 import { useI18n } from "@/lib/i18n/provider";
 import type { TKey } from "@/lib/i18n/translate";
@@ -63,11 +65,12 @@ type PdfState =
   | { step: "closed" }
   | { step: "opening"; file: File }
   | { step: "password"; file: File; error?: string }
-  | ({ step: "ready"; error?: string } & OpenPdf)
+  | ({ step: "ready"; error?: string; report?: string } & OpenPdf)
   | ({ step: "extracting"; done: number; total: number } & OpenPdf)
-  | ({ step: "ocrOffer"; error?: string } & Pending)
+  | ({ step: "ocrOffer"; error?: string; report?: string } & Pending)
   | ({ step: "ocr"; progress: OcrProgress } & Pending)
-  | { step: "failed"; file: File; error: string };
+  /** report: the diagnostic report of an unexpected failure (see pdf-diagnostics.ts). */
+  | { step: "failed"; file: File; error: string; report?: string };
 
 /** How the pages to extract are chosen. "range" uses two number fields, so no hyphen has to be typed. */
 type PageMode = "all" | "single" | "range" | "multiple";
@@ -127,8 +130,12 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
       let buffer: ArrayBuffer;
       try {
         buffer = await file.arrayBuffer();
-      } catch {
-        if (!ctrl.signal.aborted) setPdf({ step: "failed", file, error: errorText("READ_FAILED") });
+      } catch (e) {
+        if (!ctrl.signal.aborted) {
+          const err = PdfError.from(e, "open");
+          err.code = "READ_FAILED";
+          setPdf({ step: "failed", file, error: errorText("READ_FAILED"), report: diagnosticReport(err, { action: "import PDF: read the chosen file", fileSize: file.size }) });
+        }
         abortRef.current = null;
         return;
       }
@@ -147,13 +154,13 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
       } catch (e) {
         if (ctrl.signal.aborted) return;
         abortRef.current = null;
-        const code = classifyPdfError(e);
+        const err = PdfError.from(e, "open");
         // The underlying error, for diagnosis (never the document's text).
-        console.warn("[pdf] open failed:", code, (e as Error)?.message);
-        if (code === "PASSWORD_REQUIRED" || code === "PASSWORD_INCORRECT") {
-          setPdf({ step: "password", file, error: code === "PASSWORD_INCORRECT" ? errorText(code) : undefined });
+        console.warn("[pdf] open failed:", err.code, err.stage, err.original?.message ?? err.message);
+        if (err.code === "PASSWORD_REQUIRED" || err.code === "PASSWORD_INCORRECT") {
+          setPdf({ step: "password", file, error: err.code === "PASSWORD_INCORRECT" ? errorText(err.code) : undefined });
         } else {
-          setPdf({ step: "failed", file, error: errorText(code) });
+          setPdf({ step: "failed", file, error: errorText(err.code), report: diagnosticReport(err, { action: "import PDF: open", fileSize: file.size }) });
         }
       }
     },
@@ -279,15 +286,16 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
     } catch (e) {
       if (ctrl.signal.aborted) return;
       abortRef.current = null;
-      const code = classifyPdfError(e);
-      console.warn("[pdf] extraction failed:", code, (e as Error)?.message);
-      setPdf({ step: "ready", file, doc, numPages, error: errorText(code) });
+      const err = PdfError.from(e, "text");
+      console.warn("[pdf] extraction failed:", err.code, err.stage, err.original?.message ?? err.message);
+      const report = diagnosticReport(err, { action: "import PDF: extract text", fileSize: file.size, pageCount: numPages, pagesSelected: sel.pages.length, documentOpened: true });
+      setPdf({ step: "ready", file, doc, numPages, error: errorText(err.code), report });
     }
   }
 
   async function runOcr() {
     if (pdf.step !== "ocrOffer") return;
-    const { step: _step, error: _error, ...pending } = pdf;
+    const { step: _step, error: _error, report: _report, ...pending } = pdf;
     const targets = pending.extraction.emptyPages;
     if (targets.length > MAX_OCR_PAGES) return;
     const ctrl = new AbortController();
@@ -313,14 +321,16 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
       // Stopping returns to the choice; the document stays open.
       if (ctrl.signal.aborted) return setPdf((s) => (s.step === "ocr" ? { step: "ocrOffer", ...pending } : s));
       abortRef.current = null;
-      const code = classifyPdfError(e);
-      setPdf({ step: "ocrOffer", ...pending, error: errorText(code === "UNEXPECTED" ? "OCR_FAILED" : code) });
+      const err = PdfError.from(e, "ocr");
+      console.warn("[pdf] OCR failed:", err.code, err.original?.message ?? err.message);
+      const report = diagnosticReport(err, { action: "import PDF: text recognition", fileSize: pending.file.size, pageCount: pending.numPages, pagesSelected: targets.length, documentOpened: true });
+      setPdf({ step: "ocrOffer", ...pending, error: errorText(err.code === "UNEXPECTED" ? "OCR_FAILED" : err.code), report });
     }
   }
 
   function skipImagePages() {
     if (pdf.step !== "ocrOffer") return;
-    const { step: _step, error: _error, ...pending } = pdf;
+    const { step: _step, error: _error, report: _report, ...pending } = pdf;
     finishImport(pending, joinPages(pending.extraction.pages), { skipped: pending.extraction.emptyPages });
   }
 
@@ -390,9 +400,12 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
         )}
 
         {pdf.step === "failed" && (
-          <Notice tone="error" role="alert">
-            {pdf.error}
-          </Notice>
+          <div>
+            <Notice tone="error" role="alert">
+              {pdf.error}
+            </Notice>
+            {pdf.report && <DiagnosticActions report={pdf.report} />}
+          </div>
         )}
 
         {pdf.step === "password" && (
@@ -515,6 +528,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
                 {pdf.error}
               </Notice>
             )}
+            {pdf.error && pdf.report && <DiagnosticActions report={pdf.report} />}
           </fieldset>
         )}
 
@@ -560,6 +574,7 @@ export function useFileImport({ getText, onImport }: { getText: () => string; on
                 {pdf.error}
               </Notice>
             )}
+            {pdf.error && pdf.report && <DiagnosticActions report={pdf.report} />}
           </div>
         )}
 

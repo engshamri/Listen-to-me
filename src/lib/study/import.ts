@@ -6,7 +6,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import { PDF_PAGE_TIMEOUT_MS } from "@/lib/files/limits";
 import type { OcrParagraph } from "@/lib/files/ocr";
-import { PdfError, classifyPdfError, isBlankText, withTimeout } from "@/lib/files/pdf";
+import { PdfError, isBlankText, readTextContent, withTimeout } from "@/lib/files/pdf";
 import { pageParagraphs, paragraphsText, type Paragraph } from "./layout";
 import type { StudyPage } from "./store";
 
@@ -25,7 +25,7 @@ export async function readPages(
     try {
       const page = await withTimeout(doc.getPage(n), PDF_PAGE_TIMEOUT_MS);
       try {
-        const content = await withTimeout(page.getTextContent(), PDF_PAGE_TIMEOUT_MS);
+        const content = await withTimeout(readTextContent(page), PDF_PAGE_TIMEOUT_MS);
         const paragraphs = pageParagraphs(content.items, page.view, content.styles);
         const hasText = !isBlankText(paragraphsText(paragraphs));
         pages.push({ page: n, paragraphs: hasText ? paragraphs : [], source: hasText ? "text" : "none" });
@@ -34,11 +34,14 @@ export async function readPages(
       }
     } catch (e) {
       if (signal?.aborted) throw new PdfError("ABORTED");
-      const code = classifyPdfError(e);
-      if (code === "MEMORY" || code === "UNSUPPORTED_BROWSER" || code === "READER_FAILED") throw new PdfError(code, (e as Error)?.message);
+      const err = PdfError.from(e, "text");
+      if (err.code === "MEMORY" || err.code === "UNSUPPORTED_BROWSER" || err.code === "READER_FAILED") throw err;
       // A page pdf.js can't read is kept without text (it can still be tried with OCR), never invented.
       pages.push({ page: n, paragraphs: [], source: "none" });
-      if (++failed === total) throw new PdfError("EXTRACT_FAILED", (e as Error)?.message);
+      if (++failed === total) {
+        err.code = "EXTRACT_FAILED";
+        throw err;
+      }
     }
     onProgress?.(n, total);
     // Let the UI paint progress between pages.

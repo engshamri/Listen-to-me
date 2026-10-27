@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { sniffFile } from "@/lib/files/kind";
 import { MAX_PDF_BYTES } from "@/lib/files/limits";
 import { PdfError, classifyPdfError, destroyPdf, openPdf } from "@/lib/files/pdf";
+import { diagnosticReport } from "@/lib/files/pdf-diagnostics";
 import { PDF_ERROR_KEYS } from "@/lib/files/pdf-messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { MAX_STUDY_PAGES, readPages, titleFromFileName, usableTitle } from "@/lib/study/import";
@@ -59,8 +60,13 @@ export function useLectureImport(onSaved: (doc: StudyDoc) => void) {
         return;
       }
       const code = classifyPdfError(e);
-      console.warn("[pdf] lecture import failed:", code, e.message);
-      toast.error(code === "PASSWORD_REQUIRED" || code === "PASSWORD_INCORRECT" ? t("study.passwordPdf") : t(PDF_ERROR_KEYS[code], { max: fmt.bytes(MAX_PDF_BYTES) }), { duration: 12_000 });
+      console.warn("[pdf] lecture import failed:", code, e.stage, e.original?.message ?? e.message);
+      if (code === "PASSWORD_REQUIRED" || code === "PASSWORD_INCORRECT") return void toast.error(t("study.passwordPdf"), { duration: 12_000 });
+      const report = diagnosticReport(e, { action: "Study: add a lecture", fileSize: file.size });
+      toast.error(t(PDF_ERROR_KEYS[code], { max: fmt.bytes(MAX_PDF_BYTES) }), {
+        duration: 30_000,
+        action: { label: t("pdf.copyReport"), onClick: () => void navigator.clipboard.writeText(report).then(() => toast.success(t("pdf.reportCopied")), () => toast.info(report, { duration: 60_000 })) },
+      });
     } finally {
       ctrl.current = null;
       setProgress(null);

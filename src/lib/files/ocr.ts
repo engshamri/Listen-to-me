@@ -9,7 +9,7 @@
  */
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import type { Worker as TesseractWorker } from "tesseract.js";
-import { OCR_LOW_CONFIDENCE, OCR_MAX_CANVAS_SIDE, OCR_PAGE_TIMEOUT_MS, OCR_RENDER_SCALE } from "./limits";
+import { OCR_LOAD_TIMEOUT_MS, OCR_LOW_CONFIDENCE, OCR_MAX_CANVAS_SIDE, OCR_PAGE_TIMEOUT_MS, OCR_RENDER_SCALE } from "./limits";
 import { PdfError, isBlankText, withTimeout, type PageTexts } from "./pdf";
 
 /** Language data shipped with the app (see scripts/copy-vendor-assets.mjs). */
@@ -105,6 +105,8 @@ export async function recognizePdfPages(
   pages: number[],
   { lang, signal, onProgress, paragraphs: withParagraphs = false }: { lang: OcrLanguage; signal?: AbortSignal; onProgress?: (p: OcrProgress) => void; paragraphs?: boolean },
 ): Promise<OcrResult> {
+  // The OCR engine is WebAssembly; without it (e.g. iPhone Lockdown Mode) loading it would hang.
+  if (typeof WebAssembly !== "object") throw new PdfError("OCR_UNAVAILABLE", "WebAssembly is not available");
   const origin = window.location.origin;
   let current = { done: 0, total: pages.length };
   onProgress?.({ stage: "loading", ...current, page: 0 });
@@ -114,21 +116,42 @@ export async function recognizePdfPages(
   const stop = () => void worker?.terminate().catch(() => {});
   signal?.addEventListener("abort", stop, { once: true });
 
+  // Without an error handler tesseract.js throws its worker's errors where nothing can catch
+  // them, and a failed start then left "Loading…" on screen forever: report them instead, and
+  // give the start (engine and language data) a time limit.
+  let engineFailed: (e: unknown) => void = () => {};
+  const failure = new Promise<never>((_, reject) => {
+    engineFailed = (e) => reject(new PdfError("OCR_ENGINE_FAILED", String((e as Error)?.message ?? e)));
+  });
+  failure.catch(() => {});
+
   try {
-    worker = await abortable(
-      createWorker(lang.split("+"), LSTM_ONLY, {
-        workerPath: `${origin}/ocr/worker.min.js`,
-        corePath: `${origin}/ocr/core`,
-        langPath: `${origin}/ocr/lang`,
-        gzip: true,
-        // Served by this app with normal HTTP caching; don't keep a second copy in IndexedDB.
-        cacheMethod: "none",
-        logger: (m) => {
-          if (m.status === "recognizing text") onProgress?.({ stage: "recognizing", ...current, page: m.progress });
-        },
-      }),
-      signal,
-    );
+    try {
+      worker = await withTimeout(
+        abortable(
+          Promise.race([
+            createWorker(lang.split("+"), LSTM_ONLY, {
+              workerPath: `${origin}/ocr/worker.min.js`,
+              corePath: `${origin}/ocr/core`,
+              langPath: `${origin}/ocr/lang`,
+              gzip: true,
+              // Served by this app with normal HTTP caching; don't keep a second copy in IndexedDB.
+              cacheMethod: "none",
+              logger: (m) => {
+                if (m.status === "recognizing text") onProgress?.({ stage: "recognizing", ...current, page: m.progress });
+              },
+              errorHandler: (e) => engineFailed(e),
+            }),
+            failure,
+          ]),
+          signal,
+        ),
+        OCR_LOAD_TIMEOUT_MS,
+      );
+    } catch (e) {
+      if (e instanceof PdfError && e.code === "TIMEOUT") throw new PdfError("OCR_ENGINE_FAILED", `the engine did not start within ${OCR_LOAD_TIMEOUT_MS / 1000} s`);
+      throw e;
+    }
 
     const texts: PageTexts = new Map();
     const lowConfidence: number[] = [];

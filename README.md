@@ -170,8 +170,8 @@ All of the following were run on Windows 11 (Node 24, Microsoft Edge, ffmpeg 9) 
 | Suite | Result |
 |---|---|
 | `npm run typecheck`, `npm run lint`, `npm run build` | clean, no errors or warnings |
-| `npm test` (unit, incl. the speech client against a mock service, read-along alignment, the library store, chapter detection, the notes export, the Google voice splitting, the study workspace (layout on a real PDF, storage, translation alignment), the practice tools (definitions, passage search, quizzes, spaced repetition, backup files), PDF import (page selection, file kinds, error classification on real PDFs) and the donation address/QR checks) | 265 passed |
-| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, library, chapters, bookmarks, listening while generating, the Google voice, the study workspace and its practice tools, OCR, PDF import and text tools also in WebKit with an iPhone profile) | 152 passed |
+| `npm test` (unit, incl. the speech client against a mock service, read-along alignment, the library store, chapter detection, the notes export, the Google voice splitting, the study workspace (layout on a real PDF, storage, translation alignment), the practice tools (definitions, passage search, quizzes, spaced repetition, backup files), PDF import (page selection, file kinds, error classification on real PDFs) and the donation address/QR checks) | 270 passed |
+| `npm run test:e2e` (browser, incl. axe WCAG 2.2 A/AA scans, live generation, read-along, library, chapters, bookmarks, listening while generating, the Google voice, the study workspace and its practice tools, OCR, PDF import and text tools also in WebKit with an iPhone profile) | 162 passed |
 | `npm run test:live` (API against a running server, real speech/translation/ffmpeg, word timings, the Google voice) | 27 passed |
 | Multi-part audio check (4-part Arabic, 3-part English): decoded with ffmpeg, transcribed with Whisper large-v3 | no decode errors, no gaps > 1.2 s at part boundaries, 98.1 % / 99.2 % of source words recovered in order |
 | Vercel mode (`VERCEL=1`, no system ffmpeg) | bundled ffmpeg found, 4 MB conversion limit enforced, conversions streamed, previews cached in the temp folder |
@@ -221,6 +221,7 @@ A GitHub Actions workflow (`.github/workflows/production-check.yml`) runs a shor
 | Port 3000 is busy | The launcher picks the next free port automatically, or use `--port 8080` |
 | “The speech service didn't respond” | Check your internet connection and press **Retry**; finished parts are kept. Microsoft's free service sometimes slows down or drops connections under load |
 | Strange characters after importing a TXT | Choose another encoding in the file bar above the editor |
+| PDF import fails on a phone or tablet | Open `/pdf-check` on that device: it shows which stage fails; "Copy diagnostic report" gives the details to send (no file names or document text) |
 | PDF import or OCR does nothing after a manual install | Run `npm install` (or `node scripts/copy-vendor-assets.mjs`) to copy the engine files into `public/` |
 | API calls return 403 behind a reverse proxy | Set `TRUST_PROXY=true` so the public host name from `X-Forwarded-Host` is used |
 | PowerShell blocks `run.ps1` | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, or just run `python server.py` |

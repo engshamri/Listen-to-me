@@ -15,6 +15,7 @@ scripts/
                              standard fonts, image decoders) and the OCR engine (tesseract.js worker,
                              WebAssembly cores, Arabic/English data) into public/ (git-ignored)
   make-protected-pdfs.py     Test fixtures: the lecture PDF with a password, and owner-restricted (needs pypdf)
+  old-webkit-check.mjs       PDF import in real older WebKit engines (17.4-26.0) against a running server
   live-check.mjs             End-to-end API checks against a running server (SMOKE=1: the daily subset)
   voice-qa/run_audit.py      Voice quality audit (audio checks + speech recognition) → voice-quality.json
   voice-qa/reliability.py    Repeated synthesis attempts for voices that fail intermittently
@@ -95,7 +96,7 @@ tests/
   |---|---|
   | `courses` | Course names |
   | `docs` | Lecture metadata and reading progress (last page, pages visited, completed, scanned pages) |
-  | `files` | The PDF itself |
+  | `files` | The PDF's bytes (an ArrayBuffer; lectures saved before 2026-10-27 as a Blob, still read): WebKit doesn't store Blobs in IndexedDB in every configuration |
   | `pages` | Paragraphs and saved translations, keyed `[docId, page]` |
   | `annotations` | Highlights, notes and bookmarks |
   | `glossary` | Preferred translations of terms |
@@ -194,7 +195,10 @@ Nothing in the request path needs Python or a writable project folder. With `VER
 3. **Errors.** `classifyPdfError` gives each failure its own code and message (`lib/files/pdf-messages.ts`): password needed or wrong (the dialog asks for it; it stays in memory), damaged structure, a feature pdf.js can't handle, a browser without the needed built-ins, the reader failing to load, out of memory, a file the browser can't read (e.g. a cloud file not downloaded), no page readable, cancelled, unexpected. The underlying message goes to the browser console for diagnosis; the document's text never does.
 4. **Pages.** All pages, a single page, a range with two number fields (From/To: the phone's number keypad is enough, no hyphen needed) or several ranges in a text field (a text keyboard, so iPhone users can type `-` and `,`). `parsePageSelection` accepts Arabic-Indic digits, the Arabic comma and any dash, sorts and de-duplicates, and refuses with a reason anything malformed, zero, reversed or past the last page; it never substitutes another range. The dialog shows the count and the pages selected.
 5. `extractPdfText` reads the text layer of the selected pages one at a time, releasing each page, and returns every page, marking image-only pages as empty instead of dropping them. A page pdf.js fails on is left out and named afterwards; the others are kept. Arabic lines get Arabic letter forms and diacritics on the right letter (`orderLineItems`, shared with the study workspace).
-6. If any page is empty, the dialog offers OCR for exactly those pages. `recognizePdfPages` renders each page to a canvas with pdf.js (about 216 dpi, at most 4096 px per side), recognizes it with tesseract.js (LSTM engine, WebAssembly, in a web worker) and releases the canvas before the next page.
+   - **Text is read with the stream's reader** (`readTextContent`), not pdf.js's `page.getTextContent()`: that method loops over a `ReadableStream` with `for await…of`, which Safari supports only from version 27 (WebKit 26.5 in Playwright) and the legacy build doesn't polyfill. On iPhones the document opened (page count shown) and then every page failed with `TypeError: undefined is not a function (near '...t of e...')`. Reproduced and fixed in real WebKit 17.4, 18.0, 18.2 and 26.0 engines (`npm run test:old-webkit`). The study workspace's text layer already used `getReader()`.
+   - **Diagnostics** (`lib/files/pdf-diagnostics.ts`): every failure records its stage (loading pdf.js, opening in the worker, loading a page, reading text, OCR) and the original exception. The dialog, the study import and the lecture viewer offer "Copy diagnostic report": the stage, error code, exception and first stack lines, pdf.js version and worker URL, app build (Vercel commit), browser and its features, file size and page count. Never the file name or document text; nothing is sent by the app.
+   - **`/pdf-check`** (not indexed, linked from PDF errors): runs each stage on a sample lecture (`public/samples/pdf-check.pdf`), reads pages 1 and 5, closes, reopens and reads page 2, releases the document, and shows which stage passes or fails; a student can also test their own file (only page and character counts are shown) and copy the report.
+6. If any page is empty, the dialog offers OCR for exactly those pages (OCR needs WebAssembly: without it, e.g. in iPhone Lockdown Mode, the app says so instead of starting; worker errors are caught, and an engine that hasn't started within 2 minutes is reported, never left loading). `recognizePdfPages` renders each page to a canvas with pdf.js (about 216 dpi, at most 4096 px per side), recognizes it with tesseract.js (LSTM engine, WebAssembly, in a web worker) and releases the canvas before the next page.
 7. The engine files and `ara`/`eng` language data are copied from npm packages into `public/ocr` by `scripts/copy-vendor-assets.mjs` and loaded from the app's own origin (`workerPath`, `corePath`, `langPath`), with IndexedDB caching disabled. No third-party server is contacted; an E2E test asserts this.
 8. Results are merged with the text-layer pages in page order (`joinPages`). Pages with mean confidence below 70 are listed for proofreading; pages where nothing was recognized are named. Limits: 50 pages per OCR run, 180 s per page; Stop terminates the worker.
 

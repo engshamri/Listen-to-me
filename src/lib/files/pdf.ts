@@ -2,7 +2,7 @@
  * In-browser PDF text extraction with pdf.js. Documents never leave the
  * user's device. Runs pdf.js in its web worker, so the UI stays responsive.
  */
-import type { PDFDocumentProxy, TextItem } from "pdfjs-dist/types/src/display/api";
+import type { PDFDocumentProxy, PDFPageProxy, TextContent, TextItem } from "pdfjs-dist/types/src/display/api";
 import { arabicLetters } from "@/lib/text/arabic-letters";
 import { MAX_PDF_BYTES, PDF_PAGE_TIMEOUT_MS } from "./limits";
 
@@ -16,10 +16,12 @@ export type PdfErrorCode =
   | "INVALID"
   /** pdf.js read the file but failed on something in it. */
   | "UNSUPPORTED_FEATURE"
-  /** A JavaScript built-in the reader needs is missing: the browser is too old. */
+  /** A JavaScript built-in or browser API the reader uses is missing. */
   | "UNSUPPORTED_BROWSER"
   /** The pdf.js library or its worker could not be loaded. */
   | "READER_FAILED"
+  /** A data file pdf.js asked for (character map, font, decoder) didn't load. */
+  | "ASSET_FAILED"
   | "MEMORY"
   /** The browser could not read the chosen file (e.g. a cloud file not downloaded). */
   | "READ_FAILED"
@@ -27,13 +29,47 @@ export type PdfErrorCode =
   | "TIMEOUT"
   | "ABORTED"
   | "OCR_FAILED"
+  /** Text recognition can't run here: the browser has no WebAssembly (e.g. Lockdown Mode). */
+  | "OCR_UNAVAILABLE"
+  /** The OCR engine failed to start, or didn't start in time. */
+  | "OCR_ENGINE_FAILED"
   /** No selected page could be read. */
   | "EXTRACT_FAILED"
   | "UNEXPECTED";
 
+/** Where reading a PDF failed (for the diagnostic report). */
+export type PdfStage = "reader" | "open" | "page" | "text" | "ocr";
+
 export class PdfError extends Error {
-  constructor(public code: PdfErrorCode, message?: string) {
+  /** Where it failed. */
+  stage?: PdfStage;
+  /** The underlying exception: name, message and the first lines of its stack. Never document text. */
+  original?: { name: string; message: string; stack: string };
+
+  constructor(
+    public code: PdfErrorCode,
+    message?: string,
+  ) {
     super(message ?? code);
+  }
+
+  /** Wraps any failure at a stage, keeping the original exception for the diagnostic report. */
+  static from(e: unknown, stage: PdfStage): PdfError {
+    if (e instanceof PdfError) {
+      e.stage ??= stage;
+      return e;
+    }
+    const err = new PdfError(classifyPdfError(e), (e as Error)?.message);
+    err.stage = stage;
+    err.original = {
+      name: String((e as { name?: unknown } | null)?.name ?? typeof e),
+      message: String((e as { message?: unknown } | null)?.message ?? e).slice(0, 300),
+      stack: String((e as { stack?: unknown } | null)?.stack ?? "")
+        .split("\n")
+        .slice(0, 6)
+        .join("\n"),
+    };
+    return err;
   }
 }
 
@@ -45,8 +81,9 @@ export function classifyPdfError(e: unknown): PdfErrorCode {
   if (name === "PasswordException") return (e as { code?: number }).code === 2 ? "PASSWORD_INCORRECT" : "PASSWORD_REQUIRED";
   if (name === "InvalidPDFException") return "INVALID";
   if (/fake worker|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError|Loading chunk/iu.test(`${name} ${message}`)) return "READER_FAILED";
+  if (/Unable to load (binary )?CMap|standard font|Unable to load (wasm|the WebAssembly)|wasm.*(fetch|load)/iu.test(message)) return "ASSET_FAILED";
   if (name === "RangeError" || /out of memory|allocation failed|Array buffer allocation|Maximum call stack/iu.test(message)) return "MEMORY";
-  // A built-in this browser lacks, e.g. "hashOriginal.toHex is not a function" (Safari before 18.2).
+  // A built-in or API this browser lacks, e.g. "undefined is not a function (near '...t of e...')".
   if (["TypeError", "ReferenceError", "SyntaxError"].includes(name) || /is not a function|is not defined|Can't find variable|is not a constructor|undefined is not an object/iu.test(message)) {
     return "UNSUPPORTED_BROWSER";
   }
@@ -56,6 +93,7 @@ export function classifyPdfError(e: unknown): PdfErrorCode {
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 let pdfjsPromise: Promise<PdfJs> | null = null;
+let pdfjsInfo: { version: string; workerSrc: string } | null = null;
 
 /** Where the copied pdf.js files are served (see scripts/copy-vendor-assets.mjs). */
 const PDFJS_BASE = "/pdfjs";
@@ -72,14 +110,46 @@ export function loadPdfJs(): Promise<PdfJs> {
     (mod) => {
       // The worker file carries the version, so it always matches this library.
       mod.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE}/pdf.worker-${mod.version}.min.mjs`;
+      pdfjsInfo = { version: mod.version, workerSrc: mod.GlobalWorkerOptions.workerSrc };
       return mod;
     },
     (e: unknown) => {
       pdfjsPromise = null;
-      throw new PdfError("READER_FAILED", (e as Error)?.message);
+      const err = PdfError.from(e, "reader");
+      err.code = "READER_FAILED";
+      throw err;
     },
   );
   return pdfjsPromise;
+}
+
+/** The loaded pdf.js version and worker URL, or null before pdf.js has loaded. */
+export const loadedPdfJsInfo = () => pdfjsInfo;
+
+/**
+ * A page's text content, read chunk by chunk with the stream's reader.
+ * pdf.js's own page.getTextContent() loops over the stream with
+ * `for await…of`, which needs ReadableStream async iteration. Safari has it
+ * only in its newest releases (Safari 27 in MDN's data), so on older iPhones
+ * (tested in WebKit 17.4, 18.0, 18.2 and 26.0) it threw "undefined is not a
+ * function" for every page after the document had opened. pdf.js's legacy
+ * build doesn't polyfill it.
+ */
+export async function readTextContent(page: PDFPageProxy): Promise<TextContent> {
+  const reader = (page.streamTextContent() as ReadableStream<TextContent>).getReader();
+  const content: TextContent = { items: [], styles: Object.create(null), lang: null };
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      content.lang ??= value.lang;
+      Object.assign(content.styles, value.styles);
+      for (const item of value.items) content.items.push(item);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return content;
 }
 
 /** Checks the "%PDF-" signature in the first kilobyte (some files have junk before it). */
@@ -116,7 +186,7 @@ export async function openPdf(buffer: ArrayBuffer, { signal, password }: { signa
       wasmUrl: `${PDFJS_BASE}/wasm/`,
     });
   } catch (e) {
-    throw new PdfError(classifyPdfError(e), (e as Error)?.message);
+    throw PdfError.from(e, "open");
   }
   const onAbort = () => void task.destroy();
   signal?.addEventListener("abort", onAbort, { once: true });
@@ -129,7 +199,7 @@ export async function openPdf(buffer: ArrayBuffer, { signal, password }: { signa
     return doc;
   } catch (e) {
     if (signal?.aborted) throw new PdfError("ABORTED");
-    throw new PdfError(classifyPdfError(e), (e as Error)?.message);
+    throw PdfError.from(e, "open");
   } finally {
     signal?.removeEventListener("abort", onAbort);
   }
@@ -281,14 +351,16 @@ export async function extractPdfText(
   const texts: PageTexts = new Map();
   const emptyPages: number[] = [];
   const failedPages: number[] = [];
-  let lastError: unknown = null;
+  let lastError: PdfError | null = null;
   for (let i = 0; i < pages.length; i++) {
     if (signal?.aborted) throw new PdfError("ABORTED");
     const pageNo = pages[i];
+    let stage: PdfStage = "page";
     try {
       const page = await withTimeout(doc.getPage(pageNo), PDF_PAGE_TIMEOUT_MS);
+      stage = "text";
       try {
-        const content = await withTimeout(page.getTextContent(), PDF_PAGE_TIMEOUT_MS);
+        const content = await withTimeout(readTextContent(page), PDF_PAGE_TIMEOUT_MS);
         const text = itemsToText(content.items);
         if (isBlankText(text)) {
           emptyPages.push(pageNo);
@@ -302,16 +374,21 @@ export async function extractPdfText(
     } catch (e) {
       if (signal?.aborted) throw new PdfError("ABORTED");
       // Out of memory or a missing browser feature will fail every page: stop now.
-      const code = classifyPdfError(e);
-      if (code === "MEMORY" || code === "UNSUPPORTED_BROWSER" || code === "READER_FAILED") throw new PdfError(code, (e as Error)?.message);
+      const err = PdfError.from(e, stage);
+      if (err.code === "MEMORY" || err.code === "UNSUPPORTED_BROWSER" || err.code === "READER_FAILED") throw err;
       failedPages.push(pageNo);
-      lastError = e;
+      lastError = err;
     }
     onProgress?.(i + 1, pages.length);
     // Let React paint progress between pages.
     await new Promise((r) => setTimeout(r, 0));
   }
-  if (pages.length && failedPages.length === pages.length) throw new PdfError("EXTRACT_FAILED", (lastError as Error)?.message);
+  if (pages.length && failedPages.length === pages.length) {
+    const err = new PdfError("EXTRACT_FAILED", lastError?.message);
+    err.stage = lastError?.stage;
+    err.original = lastError?.original;
+    throw err;
+  }
   return { pages: texts, emptyPages, failedPages };
 }
 

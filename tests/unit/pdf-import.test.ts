@@ -4,7 +4,8 @@ import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
 import { describe, expect, it } from "vitest";
 import { detectKind, looksLikeText } from "@/lib/files/kind";
-import { classifyPdfError, extractPdfText, formatPageList, parsePageSelection, PdfError, westernDigits } from "@/lib/files/pdf";
+import { classifyPdfError, extractPdfText, formatPageList, parsePageSelection, PdfError, readTextContent, westernDigits } from "@/lib/files/pdf";
+import { diagnosticReport } from "@/lib/files/pdf-diagnostics";
 import { PDF_ERROR_KEYS, pageSelectionMessage } from "@/lib/files/pdf-messages";
 import en from "@/lib/i18n/messages/en";
 
@@ -178,7 +179,13 @@ describe("page-by-page extraction", () => {
         if (error) throw error;
         if (bad.includes(n)) throw Object.assign(new Error("bad page"), { name: "UnknownErrorException" });
         return {
-          getTextContent: async () => ({ items: [{ str: texts[n - 1], transform: [1, 0, 0, 1, 0, 700], width: 100, height: 12, hasEOL: false }] }),
+          streamTextContent: () =>
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue({ items: [{ str: texts[n - 1], transform: [1, 0, 0, 1, 0, 700], width: 100, height: 12, hasEOL: false }], styles: {}, lang: null });
+                controller.close();
+              },
+            }),
           cleanup: () => {},
         };
       },
@@ -209,5 +216,76 @@ describe("page-by-page extraction", () => {
     expect(r.pages.get(3)).toContain("تسرّع التفاعلات الكيميائية");
     expect(r.pages.get(3)).not.toMatch(/[یکھ]/u);
     await doc.loadingTask.destroy();
+  });
+});
+
+describe("text reading without ReadableStream async iteration (iPhones before Safari 26.5/27)", () => {
+  /** Runs `fn` with ReadableStream's async iterator removed, as in Safari before 27 (WebKit 17.4–26.0 tested). */
+  async function withoutAsyncIteration<T>(fn: () => Promise<T>): Promise<T> {
+    const proto = ReadableStream.prototype as unknown as Record<PropertyKey, unknown>;
+    const saved = { iterator: proto[Symbol.asyncIterator], values: proto.values };
+    delete proto[Symbol.asyncIterator];
+    delete proto.values;
+    try {
+      return await fn();
+    } finally {
+      proto[Symbol.asyncIterator] = saved.iterator;
+      proto.values = saved.values;
+    }
+  }
+
+  it("pdf.js's own getTextContent() fails there (the real-iPhone error); the app's reader reads the page", async () => {
+    const doc = await pdfjs.getDocument({ data: fixture("lecture-enzymes.pdf"), disableFontFace: true }).promise;
+    await withoutAsyncIteration(async () => {
+      const page = await doc.getPage(2);
+      const failure = await page.getTextContent().then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(failure).toBeInstanceOf(TypeError);
+      expect(classifyPdfError(failure)).toBe("UNSUPPORTED_BROWSER");
+
+      const content = await readTextContent(page);
+      expect(content.items.length).toBeGreaterThan(5);
+      const r = await extractPdfText(doc, [2, 3]);
+      expect(r.pages.get(2)).toContain("Michaelis–Menten kinetics");
+      expect(r.pages.get(3)).toContain("الإنزيمات في الجسم");
+      expect(r.failedPages).toEqual([]);
+    });
+    await doc.loadingTask.destroy();
+  });
+
+  it("reads the same items, styles and language as getTextContent()", async () => {
+    const doc = await pdfjs.getDocument({ data: fixture("lecture-enzymes.pdf"), disableFontFace: true }).promise;
+    const page = await doc.getPage(1);
+    const ours = await readTextContent(page);
+    const theirs = await page.getTextContent();
+    expect(ours.items).toEqual(theirs.items);
+    expect(ours.styles).toEqual(theirs.styles);
+    expect(ours.lang).toEqual(theirs.lang);
+    await doc.loadingTask.destroy();
+  });
+});
+
+describe("diagnostic report", () => {
+  it("names the stage, the code and the exception, with browser features, but no file name or text", () => {
+    const err = PdfError.from(new TypeError("undefined is not a function (near '...t of e...')"), "text");
+    const report = diagnosticReport(err, { action: "import PDF: extract text", fileSize: 1_600_000, pageCount: 15, pagesSelected: 1, documentOpened: true });
+    expect(report).toContain('Result: UNSUPPORTED_BROWSER at stage "text" (reading page text)');
+    expect(report).toContain("Error: TypeError: undefined is not a function (near '...t of e...')");
+    expect(report).toContain("Document opened in the worker: yes");
+    expect(report).toContain("File: 1.53 MB, 15 pages, 1 selected (name not included)");
+    expect(report).toMatch(/Features:\n {2}(yes|NO ) {2}Worker/u);
+    expect(report).toMatch(/ReadableStream async iteration/u);
+    expect(report).not.toMatch(/Nmap|\.pdf/iu);
+  });
+
+  it("a password or damaged-file error keeps its own code", () => {
+    const pw = PdfError.from(Object.assign(new Error("No password given"), { name: "PasswordException", code: 1 }), "open");
+    expect(pw.code).toBe("PASSWORD_REQUIRED");
+    expect(pw.stage).toBe("open");
+    expect(diagnosticReport(pw, { action: "x" })).toContain('Result: PASSWORD_REQUIRED at stage "open"');
+    const asset = PdfError.from(new Error("Unable to load binary CMap at: /pdfjs/cmaps/UniGB-UCS2-H.bcmap"), "text");
+    expect(asset.code).toBe("ASSET_FAILED");
   });
 });

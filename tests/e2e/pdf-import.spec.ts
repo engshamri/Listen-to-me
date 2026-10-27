@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type FileChooser, type Page } from "@playwright/test";
-import { ARABIC_BOOK, ARABIC_BOOK_PAGES } from "./global-setup";
+import { ARABIC_BOOK, ARABIC_BOOK_PAGES, REPORT_15 } from "./global-setup";
 import { editor, noHorizontalOverflow, openFresh } from "./helpers";
 
 /*
@@ -49,8 +49,10 @@ function watchExternal(page: Page): string[] {
   return external;
 }
 
-/** JavaScript built-ins pdf.js's modern build uses without fallbacks, by the Safari version that added them. */
+/** Built-ins and APIs pdf.js uses, by the Safari version that added them. */
 const BUILT_INS = {
+  /** ReadableStream async iteration: Safari 27 (WebKit 26.5 in Playwright). pdf.js's getTextContent() needs it. */
+  "safari-27": `[ReadableStream.prototype,Symbol.asyncIterator],[ReadableStream.prototype,"values"]`,
   /** Safari 26.2 (Chrome 145/147, Firefox 137/144). */
   "safari-26.2": `[Map.prototype,"getOrInsertComputed"],[Map.prototype,"getOrInsert"],[WeakMap.prototype,"getOrInsertComputed"],[WeakMap.prototype,"getOrInsert"],[Math,"sumPrecise"]`,
   /** Safari 18.2. */
@@ -58,14 +60,19 @@ const BUILT_INS = {
 };
 
 /**
- * Makes the page behave like an older browser (Safari 18.2-26.1, or Safari 18.1
- * and earlier): the built-ins it lacks are removed in the page and in the
- * pdf.js worker before any code runs. With pdf.js's modern build the first
- * showed "This PDF is damaged…" for encrypted PDFs and the second never
- * finished opening any PDF.
+ * Makes the page behave like an older Safari: what it lacks is removed in the
+ * page and in the pdf.js worker before any code runs. "26.0-26.4" is what
+ * the real iPhone failure needed: the document opened, then reading text
+ * threw "undefined is not a function" (ReadableStream async iteration).
+ * Real older engines are tested by scripts/old-webkit-check.mjs.
  */
-async function simulateOlderBrowser(page: Page, safari: "18.2-26.1" | "before-18.2") {
-  const list = safari === "18.2-26.1" ? BUILT_INS["safari-26.2"] : `${BUILT_INS["safari-26.2"]},${BUILT_INS["safari-18.2"]}`;
+async function simulateOlderBrowser(page: Page, safari: "26.0-26.4" | "18.2-26.1" | "before-18.2") {
+  const list =
+    safari === "26.0-26.4"
+      ? BUILT_INS["safari-27"]
+      : safari === "18.2-26.1"
+        ? `${BUILT_INS["safari-27"]},${BUILT_INS["safari-26.2"]}`
+        : `${BUILT_INS["safari-27"]},${BUILT_INS["safari-26.2"]},${BUILT_INS["safari-18.2"]}`;
   const strip = `for (const [o, k] of [${list}]) { try { delete o[k]; } catch {} }`;
   await page.addInitScript(strip);
   await page.route(/\/pdfjs\/pdf\.worker-[\d.]+\.min\.mjs$/, async (route) => {
@@ -221,11 +228,11 @@ test("files are recognized from their bytes: uppercase extensions, empty or gene
   await expect(editor(page)).toHaveValue("Same file.");
 });
 
-for (const safari of ["18.2-26.1", "before-18.2"] as const) {
-  test(`older browsers (like Safari ${safari}) read PDFs, including owner-restricted ones (the cause of the false “damaged PDF” error)`, async ({ page }) => {
+for (const safari of ["26.0-26.4", "18.2-26.1", "before-18.2"] as const) {
+  test(`older browsers (like Safari ${safari}) read the text of PDFs, including owner-restricted ones`, async ({ page }) => {
     await simulateOlderBrowser(page, safari);
     await openFresh(page);
-    expect(await page.evaluate(() => typeof (Map.prototype as { getOrInsertComputed?: unknown }).getOrInsertComputed)).toBe("undefined");
+    expect(await page.evaluate(() => typeof (ReadableStream.prototype as unknown as Record<symbol, unknown>)[Symbol.asyncIterator])).toBe("undefined");
     for (const file of [RESTRICTED, LECTURE]) {
       await choose(page, file);
       await dialog(page).getByRole("radio", { name: "Single page" }).check();
@@ -330,4 +337,87 @@ test("no accessibility violations in the import dialog (English, Arabic, passwor
   await dialog(page).getByRole("radio", { name: "نطاقات متعددة" }).check();
   await page.waitForTimeout(300);
   await scan("Arabic, several ranges");
+});
+
+test("PDF check page: every stage passes on the sample in a browser like Safari 26.0; your own file shows counts only", async ({ page }) => {
+  await simulateOlderBrowser(page, "26.0-26.4");
+  await page.goto("/pdf-check");
+  await expect(page.getByText("All steps passed: this browser can read PDFs here.")).toBeVisible({ timeout: 60_000 });
+  for (const id of ["reader", "open", "page1", "page5", "reopen", "cleanup"]) await expect(page.getByTestId(`pdf-check-${id}`)).toHaveAttribute("data-status", "ok");
+  await expect(page.getByTestId("pdf-check-page1")).toContainText("Lecture 3: Enzymes and Metabolism");
+  await expect(page.getByTestId("pdf-check-reopen")).toContainText("Michaelis");
+
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Choose a PDF" }).click()]);
+  await chooser.setFiles(RESTRICTED);
+  const own = page.getByTestId("pdf-check-own-result");
+  await expect(own).toContainText("5 pages");
+  await expect(own).toContainText(/Page 1: \d+ characters read/);
+  await expect(own).not.toContainText("Enzymes");
+
+  await page.getByText("Show the diagnostic report").click();
+  const report = await page.getByRole("textbox", { name: "Diagnostic report" }).inputValue();
+  expect(report).toContain("Result: all PDF check steps passed");
+  expect(report).toContain("NO   ReadableStream async iteration");
+  expect(report).toMatch(/Own file: 0\.\d+ MB, 5 pages; page 1: \d+ characters/);
+  expect(report).not.toContain("lecture-restricted");
+});
+
+test("when the PDF reader can't start, the dialog says why and offers a diagnostic report without the file name", async ({ page, browserName, context }) => {
+  await page.route(/\/pdfjs\/pdf\.worker-[\d.]+\.min\.mjs$/, (route) => route.fulfill({ status: 404, body: "missing" }));
+  await openFresh(page);
+  await choose(page, LECTURE);
+  await expect(dialog(page).getByRole("alert")).toHaveText(/The PDF reader didn't load/);
+  await expect(dialog(page).getByRole("link", { name: "Test this browser (PDF check)" })).toHaveAttribute("href", "/pdf-check");
+  await dialog(page).getByText("Show the diagnostic report").click();
+  const report = await dialog(page).getByRole("textbox", { name: "Diagnostic report" }).inputValue();
+  expect(report).toContain('Result: READER_FAILED at stage "open"');
+  expect(report).toMatch(/Error: .*fake worker/);
+  expect(report).toContain("pdf.js: 6.");
+  expect(report).toContain("(name not included)");
+  expect(report).not.toContain("lecture-enzymes");
+  if (browserName === "chromium") {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await dialog(page).getByRole("button", { name: "Copy diagnostic report" }).click();
+    await expect(page.getByText("Diagnostic report copied.", { exact: false })).toBeVisible();
+    // The Windows clipboard turns line breaks into CRLF.
+    expect((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n")).toBe(report);
+  }
+});
+
+test("no accessibility violations on the PDF check page (English and Arabic)", async ({ page }) => {
+  const scan = async (label: string) => {
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+    expect(r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`), label).toEqual([]);
+  };
+  await page.goto("/pdf-check");
+  await expect(page.getByText("All steps passed")).toBeVisible({ timeout: 60_000 });
+  await scan("English");
+  await page.context().addCookies([{ name: "locale", value: "ar", url: "http://127.0.0.1" }]);
+  await page.goto("/pdf-check");
+  await expect(page.getByText("نجحت كل الخطوات")).toBeVisible({ timeout: 60_000 });
+  await scan("Arabic");
+});
+
+test("a 15-page technical report with images (like the PDF that failed on a real iPhone): all pages, then one page, in a browser like Safari 26.0", async ({ page }) => {
+  await simulateOlderBrowser(page, "26.0-26.4");
+  await openFresh(page);
+  await choose(page, REPORT_15);
+  const d = dialog(page);
+  await expect(d.getByText("15 pages selected: 1-15")).toBeVisible();
+  await d.getByRole("button", { name: "Extract text" }).click();
+  await expect(d).toBeHidden({ timeout: 60_000 });
+  const all = await editor(page).inputValue();
+  for (const n of [1, 8, 15]) expect(all).toContain(`Finding ${n}: Service exposure on host 192.168.56.${10 + n - 1}`);
+  expect(all).toContain("nmap -sS -sV -O -p-");
+  expect(all).toContain("445/tcp");
+
+  await choose(page, REPORT_15);
+  await d.getByRole("radio", { name: "Single page" }).check();
+  await d.getByLabel("Page", { exact: true }).fill("7");
+  await d.getByRole("button", { name: "Extract text" }).click();
+  await expect(d).toBeHidden();
+  const one = await editor(page).inputValue();
+  expect(one).toContain("Finding 7:");
+  expect(one).not.toContain("Finding 6:");
+  expect(one).not.toContain("Finding 8:");
 });

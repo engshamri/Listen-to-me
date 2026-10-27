@@ -17,12 +17,14 @@ import { TEXT_SIZES, ZOOMS, useLecture, useStudySettings } from "./study-hooks";
 import { StudyPlayer, type ListenRequest } from "./study-player";
 import { TranslationPanel } from "./translation-panel";
 import { WorkspaceContext, type WorkspaceApi } from "./workspace-context";
+import { DiagnosticActions } from "@/components/studio/pdf-diagnostics";
 import { Notice } from "@/components/studio/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MAX_OCR_PAGES, MAX_PDF_BYTES } from "@/lib/files/limits";
 import { recognizePdfPages } from "@/lib/files/ocr";
 import { classifyPdfError, destroyPdf, openPdf, type PdfErrorCode } from "@/lib/files/pdf";
+import { diagnosticReport } from "@/lib/files/pdf-diagnostics";
 import { PDF_ERROR_KEYS } from "@/lib/files/pdf-messages";
 import { useI18n } from "@/lib/i18n/provider";
 import { ocrParagraphs } from "@/lib/study/import";
@@ -54,7 +56,7 @@ function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number 
   const { data, error } = useLecture(id);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   /** "missing": the lecture was restored from a backup without its PDF. */
-  const [pdfFailed, setPdfFailed] = useState<false | PdfErrorCode | "missing">(false);
+  const [pdfFailed, setPdfFailed] = useState<false | "missing" | { code: PdfErrorCode; report: string }>(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ function WorkspaceInner({ id, initialPage }: { id: string; initialPage?: number 
         if (!alive) return;
         if ((e as { code?: string })?.code === "NOT_FOUND") return setPdfFailed("missing");
         console.warn("[pdf] lecture open failed:", classifyPdfError(e), (e as Error)?.message);
-        setPdfFailed(classifyPdfError(e));
+        setPdfFailed({ code: classifyPdfError(e), report: diagnosticReport(e, { action: "Study: open a lecture" }) });
       });
     return () => {
       alive = false;
@@ -135,7 +137,7 @@ function Loaded({
   /** Set when the PDF is not on this device: lets the student choose it again. */
   missingPdf: ((file: File) => void) | null;
   /** Why the PDF could not be opened (the text panels still work). */
-  pdfError: PdfErrorCode | null;
+  pdfError: { code: PdfErrorCode; report: string } | null;
 }) {
   const { t, fmt } = useI18n();
   const ask = useConsent();
@@ -279,8 +281,9 @@ function Loaded({
           }
           await updateDoc(doc.id, (d) => ({ scannedPages: d.scannedPages.filter((n) => !group.includes(n)) }));
         }
-      } catch {
-        if (!ctrl.signal.aborted) toast.error(t("ocr.failed"));
+      } catch (e) {
+        const code = classifyPdfError(e);
+        if (!ctrl.signal.aborted) toast.error(t(code === "OCR_UNAVAILABLE" ? "ocr.unavailable" : code === "OCR_ENGINE_FAILED" ? "ocr.engineFailed" : "ocr.failed"));
       } finally {
         ocrCtrl.current = null;
         setOcrRunning(null);
@@ -446,7 +449,8 @@ function Loaded({
                 </Notice>
               ) : (
                 <Notice tone="error">
-                  <p>{t(PDF_ERROR_KEYS[pdfError ?? "UNEXPECTED"], { max: fmt.bytes(MAX_PDF_BYTES) })}</p>
+                  <p>{t(PDF_ERROR_KEYS[pdfError?.code ?? "UNEXPECTED"], { max: fmt.bytes(MAX_PDF_BYTES) })}</p>
+                  {pdfError && <DiagnosticActions report={pdfError.report} />}
                 </Notice>
               )}
             </div>

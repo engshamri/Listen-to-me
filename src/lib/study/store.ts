@@ -7,7 +7,7 @@ import { newSrs, schedule, type Grade, type Srs } from "./srs";
  * Study data, kept in this browser (IndexedDB "asmani-study"), never uploaded:
  *   courses      – subjects that group lectures
  *   docs         – lecture metadata, reading progress
- *   files        – the PDF itself (Blob), keyed by doc id
+ *   files        – the PDF's bytes (ArrayBuffer; older lectures: Blob), keyed by doc id
  *   pages        – paragraphs (with positions) and saved translations, keyed [docId, page]
  *   annotations  – highlights, notes and bookmarks
  *   glossary     – preferred translations of terms
@@ -140,6 +140,14 @@ export function resetStudyConnection(): void {
 
 const newId = () => crypto.randomUUID();
 
+/*
+ * PDFs are stored as ArrayBuffers, not Blobs: WebKit doesn't store Blobs in
+ * IndexedDB in every configuration (the transaction fails), while
+ * ArrayBuffers always work. Lectures saved earlier as Blobs still read.
+ */
+type StoredFile = ArrayBuffer | Blob;
+const asBlob = (stored: StoredFile) => (stored instanceof Blob ? stored : new Blob([stored], { type: "application/pdf" }));
+
 // ---------------------------------------------------------------------------
 // Courses
 // ---------------------------------------------------------------------------
@@ -208,9 +216,11 @@ export async function createDoc({ file, pages, ...meta }: NewDoc): Promise<Study
     completed: false,
     scannedPages: pages.filter((p) => p.source === "none").map((p) => p.page),
   };
+  // Read before the transaction: it would commit while waiting for the file.
+  const bytes = await file.arrayBuffer();
   await db.transact(["docs", "files", "pages"], "readwrite", (tx) => {
     tx.objectStore("docs").put(doc);
-    tx.objectStore("files").put(file, doc.id);
+    tx.objectStore("files").put(bytes, doc.id);
     const store = tx.objectStore("pages");
     for (const p of pages) store.put({ ...p, docId: doc.id });
   });
@@ -247,9 +257,9 @@ export function recordVisit(id: string, page: number): Promise<StudyDoc> {
 }
 
 export async function getFile(id: string): Promise<Blob> {
-  const file = await db.transact(["files"], "readonly", (tx) => request(tx.objectStore("files").get(id) as IDBRequest<Blob | undefined>));
+  const file = await db.transact(["files"], "readonly", (tx) => request(tx.objectStore("files").get(id) as IDBRequest<StoredFile | undefined>));
   if (!file) throw new IdbError("NOT_FOUND");
-  return file;
+  return asBlob(file);
 }
 
 /** Ids of the lectures whose PDF is stored on this device. */
@@ -260,9 +270,10 @@ export async function listFileIds(): Promise<Set<string>> {
 
 /** Stores the PDF of a lecture that was restored from a backup without it. */
 export async function attachFile(id: string, file: Blob): Promise<void> {
+  const bytes = await file.arrayBuffer();
   await db.transact(["docs", "files"], "readwrite", async (tx) => {
     if (!(await request(tx.objectStore("docs").getKey(id)))) throw new IdbError("NOT_FOUND");
-    tx.objectStore("files").put(file, id);
+    tx.objectStore("files").put(bytes, id);
   });
   changes.notify();
 }
@@ -475,8 +486,8 @@ export async function dumpStudyData({ withFiles }: { withFiles: boolean }): Prom
     if (withFiles) {
       const store = tx.objectStore("files");
       const keys = (await request(store.getAllKeys())) as string[];
-      const blobs = (await request(store.getAll())) as Blob[];
-      keys.forEach((k, i) => files.set(k, blobs[i]));
+      const stored = (await request(store.getAll())) as StoredFile[];
+      keys.forEach((k, i) => files.set(k, asBlob(stored[i])));
     }
     return { courses, docs, pages, annotations, glossary, cards, quizzes, files } as StudyDump;
   });
@@ -484,13 +495,14 @@ export async function dumpStudyData({ withFiles }: { withFiles: boolean }): Prom
 
 /** Writes a backup into the database; records with the same id are replaced. */
 export async function restoreStudyData(data: StudyDump): Promise<void> {
+  const files = await Promise.all([...data.files].map(async ([id, blob]) => [id, await blob.arrayBuffer()] as const));
   await db.transact([...DATA_STORES, "files"], "readwrite", (tx) => {
     for (const name of DATA_STORES) {
       const store = tx.objectStore(name);
       for (const record of data[name] as object[]) store.put(record);
     }
-    const files = tx.objectStore("files");
-    for (const [id, blob] of data.files) files.put(blob, id);
+    const fileStore = tx.objectStore("files");
+    for (const [id, bytes] of files) fileStore.put(bytes, id);
   });
   changes.notify();
 }

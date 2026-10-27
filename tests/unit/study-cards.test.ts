@@ -177,3 +177,39 @@ describe("flashcard files", () => {
     expect(parseCards("{ broken")).toEqual([]);
   });
 });
+
+describe("stored PDF bytes", () => {
+  it("new lectures keep their PDF as bytes (WebKit can't always store Blobs); lectures stored as Blobs still read", async () => {
+    const doc = await createDoc(lecture);
+    expect([...new Uint8Array(await (await getFile(doc.id)).arrayBuffer())]).toEqual([0x25, 0x50, 0x44, 0x46]);
+    const raw = await new Promise<unknown>((resolve, reject) => {
+      const open = indexedDB.open("asmani-study");
+      open.onsuccess = () => {
+        const req = open.result.transaction("files").objectStore("files").get(doc.id);
+        req.onsuccess = () => {
+          resolve(req.result);
+          open.result.close();
+        };
+        req.onerror = () => reject(req.error);
+      };
+    });
+    expect(raw).toBeInstanceOf(ArrayBuffer);
+
+    // A lecture saved by an earlier version, as a Blob.
+    await new Promise<void>((resolve, reject) => {
+      const open = indexedDB.open("asmani-study");
+      open.onsuccess = () => {
+        const tx = open.result.transaction("files", "readwrite");
+        tx.objectStore("files").put(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], { type: "application/pdf" }), doc.id);
+        tx.oncomplete = () => {
+          open.result.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+    const old = await getFile(doc.id);
+    expect(old.type).toBe("application/pdf");
+    expect(old.size).toBe(5);
+  });
+});

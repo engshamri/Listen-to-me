@@ -35,6 +35,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:live": "node scripts/live-check.mjs",
+    "test:old-webkit": "node scripts/old-webkit-check.mjs",
     "catalog": "node scripts/build-voice-catalog.mjs",
     "voices:refresh": "python scripts/save_voices.py && node scripts/build-voice-catalog.mjs"
   },
